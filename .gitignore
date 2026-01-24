@@ -1,0 +1,12 @@
+# Xcode
+.DS_Store
+*/build/
+*.derivedData
+*.scc
+*.xccheckout
+*.xcworkspace
+!default.xcworkspace
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.swiftpm/
