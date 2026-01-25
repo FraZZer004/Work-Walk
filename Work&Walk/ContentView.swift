@@ -1127,6 +1127,7 @@ struct DashboardConfigView: View {
     func move(from source: IndexSet, to destination: Int) { widgets.move(fromOffsets: source, toOffset: destination) }
     func iconFor(_ type: MetricType) -> String { switch type { case .steps: return "figure.walk"; case .calories: return "flame.fill"; case .distance: return "map.fill"; case .heart: return "heart.fill" } }
 }
+
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @AppStorage("username") private var username: String = ""
@@ -1143,21 +1144,59 @@ struct SettingsView: View {
                 // --- SECTION PROFIL ---
                 Section {
                     VStack(spacing: 15) {
-                        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                            ZStack {
-                                if let avatar = currentAvatar {
-                                    Image(uiImage: avatar).resizable().scaledToFill().frame(width: 100, height: 100).clipShape(Circle()).overlay(Circle().stroke(Color.orange, lineWidth: 2))
-                                } else {
-                                    Circle().fill(Color(UIColor.systemGray5)).frame(width: 100, height: 100).overlay(Image(systemName: "person.fill").font(.system(size: 40)).foregroundStyle(.gray))
+                        
+                        // 👇 ZStack modifié pour inclure le bouton de suppression
+                        ZStack(alignment: .topTrailing) {
+                            
+                            // 1. La Photo (qui sert aussi de bouton pour modifier)
+                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                                ZStack {
+                                    if let avatar = currentAvatar {
+                                        Image(uiImage: avatar)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 100, height: 100)
+                                            .clipShape(Circle())
+                                            .overlay(Circle().stroke(Color.orange, lineWidth: 2))
+                                    } else {
+                                        Circle()
+                                            .fill(Color(UIColor.systemGray5))
+                                            .frame(width: 100, height: 100)
+                                            .overlay(Image(systemName: "person.fill").font(.system(size: 40)).foregroundStyle(.gray))
+                                    }
+                                    
+                                    // Petit crayon (Décoratif)
+                                    Circle()
+                                        .fill(.orange)
+                                        .frame(width: 30, height: 30)
+                                        .overlay(Image(systemName: "pencil").foregroundStyle(.white).font(.caption))
+                                        .offset(x: 35, y: 35)
                                 }
-                                Circle().fill(.orange).frame(width: 30, height: 30).overlay(Image(systemName: "pencil").foregroundStyle(.white).font(.caption)).offset(x: 35, y: 35)
                             }
-                        }.buttonStyle(.plain)
+                            .buttonStyle(.plain)
+                            
+                            // 2. Le Bouton Supprimer (s'affiche uniquement si une photo existe)
+                            if currentAvatar != nil {
+                                Button(action: deleteAvatar) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .symbolRenderingMode(.palette)
+                                        .foregroundStyle(.white, .red) // Croix blanche sur fond rouge
+                                        .font(.system(size: 26))
+                                        .background(Circle().fill(.white).frame(width: 20, height: 20)) // Petit fond blanc pour l'opacité
+                                }
+                                .offset(x: 5, y: -5) // Positionné en haut à droite
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        
                         VStack(spacing: 5) {
                             Text("Ton Prénom").font(.caption).foregroundStyle(.secondary).textCase(.uppercase)
                             TextField("Entre ton prénom", text: $username).font(.title2).bold().multilineTextAlignment(.center).submitLabel(.done)
                         }
-                    }.frame(maxWidth: .infinity).padding(.vertical, 10).listRowBackground(Color.clear)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .listRowBackground(Color.clear)
                 }
                 
                 // --- APPARENCE ---
@@ -1168,7 +1207,6 @@ struct SettingsView: View {
                 
                 // --- PRÉFÉRENCES ---
                 Section(header: Text("Préférences")) {
-                    // 👇 Toggle connecté au NotificationManager
                     Toggle(isOn: $notificationsEnabled) {
                         Label { Text("Rappels d'horaires") } icon: { Image(systemName: "bell.badge.fill").foregroundStyle(.red) }
                     }
@@ -1197,7 +1235,6 @@ struct SettingsView: View {
                     NavigationLink {
                         LegalDetailView(title: "Avertissement Financier", content: """
                         L'application Work&Walk propose des estimations de salaire basées sur les données saisies par l'utilisateur.
-                        
                         Ces calculs sont fournis à titre purement indicatif et ne sauraient remplacer une fiche de paie officielle. L'éditeur décline toute responsabilité en cas d'écart avec le salaire réel.
                         """)
                     } label: {
@@ -1251,7 +1288,21 @@ struct SettingsView: View {
             }
         }
     }
-    func loadAvatar() { if !userProfileImageBase64.isEmpty, let data = Data(base64Encoded: userProfileImageBase64) { currentAvatar = UIImage(data: data) } }
+    
+    func loadAvatar() {
+        if !userProfileImageBase64.isEmpty, let data = Data(base64Encoded: userProfileImageBase64) {
+            currentAvatar = UIImage(data: data)
+        }
+    }
+    
+    // 👇 FONCTION AJOUTÉE : Suppression de l'avatar
+    func deleteAvatar() {
+        withAnimation {
+            currentAvatar = nil
+            userProfileImageBase64 = ""
+            selectedPhotoItem = nil
+        }
+    }
 }
 
 // Petite vue pour afficher le texte légal proprement
@@ -1264,7 +1315,6 @@ struct LegalDetailView: View {
         }.navigationTitle(title)
     }
 }
-
 // MARK: - 4. NOUVELLE VUE : RÉCAP HEBDO (Corrigé & Strict)
 
 struct WeeklyRecapView: View {

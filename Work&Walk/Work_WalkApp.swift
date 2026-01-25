@@ -7,8 +7,10 @@ struct Work_WalkApp: App {
     @AppStorage("hasFinishedOnboarding") var hasFinishedOnboarding: Bool = false
     @AppStorage("selectedAppearance") private var selectedAppearance: Int = 0
     
-    // État pour gérer l'affichage du Splash Screen
-    @State private var showSplash = true
+    // 👇 CHANGEMENT DE LOGIQUE :
+    // On utilise une variable "isSplashFinished" initialisée à 'false'.
+    // Quand l'animation Zoom sera terminée, elle passera à 'true'.
+    @State private var isSplashFinished = false
 
     var body: some Scene {
         WindowGroup {
@@ -22,24 +24,21 @@ struct Work_WalkApp: App {
                     }
                 }
                 
-                // 2. LE SPLASH SCREEN (Superposé au dessus)
-                if showSplash {
-                    SplashScreenView()
-                        .transition(.opacity) // Disparition en fondu
-                        .zIndex(1) // S'assure qu'il est bien devant
+                // 2. LE NOUVEAU SPLASH SCREEN
+                // On l'affiche tant que l'animation n'est PAS finie (!isSplashFinished)
+                if !isSplashFinished {
+                    // On appelle la vue SplashView qu'on vient de créer
+                    // On lui passe la liaison ($) pour qu'elle puisse dire "C'est fini !"
+                    SplashView(isFinished: $isSplashFinished)
+                        .transition(.opacity) // Disparition douce
+                        .zIndex(1) // Toujours au premier plan
                 }
             }
-            // Application du thème global (Splash + App)
+            // Application du thème global
             .preferredColorScheme(selectedAppearance == 1 ? .light : (selectedAppearance == 2 ? .dark : nil))
-            // Gestion du timing
-            .onAppear {
-                // On attend 2 secondes, puis on cache le splash
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    withAnimation(.easeOut(duration: 0.5)) {
-                        showSplash = false
-                    }
-                }
-            }
+            
+            // ⚠️ NOTE : J'ai supprimé le bloc .onAppear ici.
+            // C'est maintenant le fichier SplashView.swift qui gère le timing (0.8s) et l'animation.
         }
         .modelContainer(for: WorkSession.self)
     }
