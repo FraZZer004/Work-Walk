@@ -4,51 +4,64 @@ import Charts
 import HealthKit
 import PhotosUI
 
-// MARK: - STRUCTURE PRINCIPALE (TABS)
-
 struct ContentView: View {
     @AppStorage("selectedAppearance") private var selectedAppearance: Int = 0
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "fr"
     
-    // 👇 1. ÉTAT POUR GÉRER L'ONGLET ACTIF
+    // On a besoin des sessions pour savoir si l'utilisateur est nouveau
+    @Query private var sessions: [WorkSession]
+    
     @State private var selectedTab: Int = 0
     
     var body: some View {
-        // 👇 2. LIAISON DE LA SÉLECTION
         TabView(selection: $selectedTab) {
             DashboardView()
                 .tabItem { Label("Accueil", systemImage: "chart.bar.xaxis") }
-                .tag(0) // 👈 TAG 0
+                .tag(0)
             
             PlanningView()
                 .tabItem { Label("Planning", systemImage: "calendar") }
-                .tag(1) // 👈 TAG 1
+                .tag(1)
             
             AnalysisView()
                 .tabItem { Label("Analyse", systemImage: "heart.text.square") }
-                .tag(2) // 👈 TAG 2 (Cible de la notification)
+                .tag(2)
             
             SalaryView()
                 .tabItem { Label("Salaire", systemImage: "eurosign.circle.fill") }
-                .tag(3) // 👈 TAG 3
+                .tag(3)
         }
         .tint(.orange)
-        // 1. Force le mode sombre/clair
         .preferredColorScheme(selectedAppearance == 1 ? .light : (selectedAppearance == 2 ? .dark : nil))
-        // 2. Force la langue choisie partout dans l'app
         .environment(\.locale, Locale(identifier: selectedLanguage))
-        // 3. Force le rechargement complet de l'interface si la langue change
         .id(selectedLanguage)
         
-        // 👇 3. GESTION DU CLIC SUR LA NOTIFICATION
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenAnalyseTab"))) { _ in
-            // On bascule sur l'onglet Analyse
-            selectedTab = 2
-        }
+        // --- GESTION DES CLICS NOTIFS ---
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenAnalyseTab"))) { _ in selectedTab = 2 }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenSalaryTab"))) { _ in selectedTab = 3 }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenPlanningTab"))) { _ in selectedTab = 1 }
+        
+        // --- MISE À JOUR INTELLIGENTE AU LANCEMENT ---
         .onAppear {
-            // On s'assure que les notifs sont demandées au lancement
+            // 1. On demande la permission (si pas déjà fait)
             NotificationManager.shared.requestAuthorization()
+            
+            // 2. On met à jour les textes des notifs selon l'expérience de l'utilisateur
+            updateNotificationsContext()
         }
+        // Si l'utilisateur ajoute sa première session pendant qu'il utilise l'app, on met à jour les notifs
+        .onChange(of: sessions.count) { _, _ in
+            updateNotificationsContext()
+        }
+    }
+    
+    // Fonction qui détermine le profil de l'utilisateur
+    func updateNotificationsContext() {
+        // Est-ce un nouvel utilisateur ? (0 session enregistrée)
+        let isNewUser = sessions.isEmpty
+        
+        // On envoie l'info au Manager pour qu'il change les textes
+        NotificationManager.shared.updateContextualNotifications(isNewUser: isNewUser)
     }
 }
 
@@ -559,46 +572,83 @@ struct MonthGridView: View {
 }
 // MARK: - 3. VUE ANALYSE (Moderne & Bento)
 
+import SwiftUI
+import SwiftData
+import Charts
+
 struct AnalysisView: View {
     @State private var healthManager = HealthManager()
     @Query(sort: \WorkSession.startTime, order: .reverse) private var sessions: [WorkSession]
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "fr"
     
+    // États de données
     @State private var totalWorkSteps: Double = 0; @State private var totalLifeSteps: Double = 0
     @State private var totalWorkCal: Double = 0;   @State private var totalLifeCal: Double = 0
     @State private var totalWorkDist: Double = 0;  @State private var totalLifeDist: Double = 0
     @State private var avgWorkHeart: Double = 0;   @State private var avgLifeHeart: Double = 0
+    
+    // Données détaillées (pour le clic)
     @State private var historySteps: [DailyData] = []; @State private var historyCal: [DailyData] = []
     @State private var historyDist: [DailyData] = []; @State private var historyHeart: [DailyData] = []
+    
     @State private var selectedMetric: MetricType? = nil
     @State private var isLoading = true
-    let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
     
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(spacing: 25) {
                     
-                    // 👇 1. LE RÉCAPITULATIF HEBDOMADAIRE (AJOUTÉ ICI)
+                    // 1. LE RÉCAP HEBDO (Ton bloc orange en haut)
                     WeeklyRecapView()
                         .padding(.top)
                     
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Bilan de la semaine").font(.title2).bold()
-                        Text("Répartition de votre activité pro/perso sur 7 jours.").font(.subheadline).foregroundStyle(.secondary)
-                    }.padding(.horizontal).padding(.top, 10)
-                    
-                    if isLoading {
-                        HStack { Spacer(); ProgressView("Calcul en cours..."); Spacer() }.padding(50)
-                    } else {
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            ModernDonutCard(type: .steps, workVal: totalWorkSteps, lifeVal: totalLifeSteps).onTapGesture { selectedMetric = .steps }
-                            ModernDonutCard(type: .calories, workVal: totalWorkCal, lifeVal: totalLifeCal).onTapGesture { selectedMetric = .calories }
-                            ModernDonutCard(type: .distance, workVal: totalWorkDist, lifeVal: totalLifeDist).onTapGesture { selectedMetric = .distance }
-                            ModernDonutCard(type: .heart, workVal: avgWorkHeart, lifeValueOverride: avgLifeHeart, isAverage: true).onTapGesture { selectedMetric = .heart }
-                        }.padding(.horizontal)
-                        HStack { Spacer(); Label("Touchez une carte pour voir le détail", systemImage: "hand.tap").font(.caption).foregroundStyle(.secondary); Spacer() }.padding(.top, 10).padding(.bottom, 30)
+                    // 2. LES CARTES "SCORE" SIMPLIFIÉES
+                    VStack(alignment: .leading, spacing: 15) {
+                        
+                        Text("Détails par activité")
+                            .font(.title3).bold()
+                            .padding(.horizontal)
+                        
+                        if isLoading {
+                            HStack { Spacer(); ProgressView(); Spacer() }.padding(30)
+                        } else {
+                            VStack(spacing: 12) {
+                                
+                                // PAS
+                                SimpleScoreCard(
+                                    type: .steps,
+                                    workVal: totalWorkSteps,
+                                    lifeVal: totalLifeSteps
+                                ).onTapGesture { selectedMetric = .steps }
+                                
+                                // CALORIES
+                                SimpleScoreCard(
+                                    type: .calories,
+                                    workVal: totalWorkCal,
+                                    lifeVal: totalLifeCal
+                                ).onTapGesture { selectedMetric = .calories }
+                                
+                                // DISTANCE
+                                SimpleScoreCard(
+                                    type: .distance,
+                                    workVal: totalWorkDist,
+                                    lifeVal: totalLifeDist
+                                ).onTapGesture { selectedMetric = .distance }
+                                
+                                // CARDIO (Cardio n'a pas de barre de progression, juste les chiffres)
+                                SimpleCardioCard(
+                                    workBPM: avgWorkHeart,
+                                    lifeBPM: avgLifeHeart
+                                ).onTapGesture { selectedMetric = .heart }
+                            }
+                            .padding(.horizontal)
+                        }
                     }
+                    
+                    Text("Données calculées sur les sessions saisies dans le Planning.")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                        .padding(.bottom, 30)
                 }
             }
             .background(Color(UIColor.systemGroupedBackground))
@@ -608,11 +658,13 @@ struct AnalysisView: View {
         }
     }
     
+    // --- HELPERS (Inchangés) ---
     func getDataFor(_ type: MetricType) -> [DailyData] {
         switch type { case .steps: return historySteps; case .calories: return historyCal; case .distance: return historyDist; case .heart: return historyHeart }
     }
     
     func analyzeWeek() {
+        // (Copie ici ton bloc de calcul 'analyzeWeek' habituel, inchangé)
         isLoading = true
         let calendar = Calendar.current; let today = Date(); let group = DispatchGroup()
         let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "EE"
@@ -680,31 +732,129 @@ struct AnalysisView: View {
     }
 }
 
-struct ModernDonutCard: View {
-    let type: MetricType; let workVal: Double; let lifeVal: Double?; let lifeValueOverride: Double?; var isAverage: Bool = false
-    init(type: MetricType, workVal: Double, lifeVal: Double? = nil, lifeValueOverride: Double? = nil, isAverage: Bool = false) {
-        self.type = type; self.workVal = workVal; self.lifeVal = lifeVal; self.lifeValueOverride = lifeValueOverride; self.isAverage = isAverage
-    }
+// MARK: - 3. NOUVELLE CARTE "SCORE" (Simple & Explicite)
+
+struct SimpleScoreCard: View {
+    let type: MetricType
+    let workVal: Double
+    let lifeVal: Double
+    
     var body: some View {
-        let actualLifeVal = lifeValueOverride ?? lifeVal ?? 0
-        let total = isAverage ? (workVal + actualLifeVal)/2 : (workVal + actualLifeVal)
-        let workPercent = total == 0 ? 0 : (workVal / total)
-        VStack(alignment: .leading, spacing: 12) {
+        let total = workVal + lifeVal
+        let workPercent = total > 0 ? workVal / total : 0
+        
+        VStack(spacing: 15) {
+            // Titre + Total
             HStack {
-                ZStack { Circle().fill(type.gradient).frame(width: 32, height: 32); Image(systemName: iconFor(type)).font(.caption).foregroundStyle(.white).bold() }
-                Text(LocalizedStringKey(type.title)).font(.subheadline).fontWeight(.semibold).foregroundStyle(.primary); Spacer()
+                HStack(spacing: 8) {
+                    Image(systemName: iconFor(type)).foregroundStyle(type.color)
+                    Text(LocalizedStringKey(type.title)).font(.headline)
+                }
+                Spacer()
+                // Total (ex: 12 000 pas)
+                Text("Total : " + format(total))
+                    .font(.subheadline).bold().foregroundStyle(.secondary)
             }
-            ZStack {
-                Circle().stroke(Color.gray.opacity(0.1), lineWidth: 12)
-                Circle().trim(from: 0, to: 1.0).stroke(Color.gray.opacity(0.3), style: StrokeStyle(lineWidth: 12, lineCap: .round)).rotationEffect(.degrees(-90))
-                Circle().trim(from: 0, to: CGFloat(workPercent)).stroke(type.gradient, style: StrokeStyle(lineWidth: 12, lineCap: .round)).rotationEffect(.degrees(-90)).animation(.easeOut(duration: 1.0), value: workPercent)
-                VStack(spacing: 0) { Text(format(isAverage ? workVal : total)).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(.primary); Text(type.unit).font(.system(size: 10)).foregroundStyle(.secondary).textCase(.uppercase) }
-            }.frame(height: 100).padding(.vertical, 5)
-            HStack { Text("\(Int(workPercent * 100))% Travail").font(.system(size: 10, weight: .bold)).foregroundStyle(type.color).padding(.horizontal, 8).padding(.vertical, 4).background(type.color.opacity(0.1)).cornerRadius(8); Spacer() }
-        }.padding().background(Color(UIColor.secondarySystemGroupedBackground)).cornerRadius(20).shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+            
+            // Les deux gros chiffres (Le duel)
+            HStack(alignment: .lastTextBaseline) {
+                // Coté Travail
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(format(workVal))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.orange)
+                    Text("Travail")
+                        .font(.caption2).bold().foregroundStyle(.orange.opacity(0.8))
+                }
+                
+                Spacer()
+                
+                // Petite barre de proportion visuelle
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.gray.opacity(0.2)).frame(height: 6)
+                        Capsule().fill(Color.orange).frame(width: geo.size.width * workPercent, height: 6)
+                    }
+                }
+                .frame(height: 6)
+                .padding(.horizontal, 20)
+                
+                Spacer()
+                
+                // Coté Perso
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(format(lifeVal))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.gray)
+                    Text("Perso")
+                        .font(.caption2).bold().foregroundStyle(.gray)
+                }
+            }
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(16)
+        // Pas d'ombre portée, juste une bordure très fine pour faire propre
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.1), lineWidth: 1))
     }
-    func format(_ val: Double) -> String { if type == .distance { return String(format: "%.1f", val) }; return "\(Int(val))" }
-    func iconFor(_ type: MetricType) -> String { switch type { case .steps: return "figure.walk"; case .calories: return "flame.fill"; case .distance: return "map.fill"; case .heart: return "heart.fill" } }
+    
+    func format(_ val: Double) -> String {
+        if type == .distance { return String(format: "%.1f km", val) }
+        return "\(Int(val))"
+    }
+    func iconFor(_ type: MetricType) -> String {
+        switch type { case .steps: return "figure.walk"; case .calories: return "flame.fill"; case .distance: return "map.fill"; case .heart: return "heart.fill" }
+    }
+}
+
+// MARK: - 4. NOUVELLE CARTE "CARDIO" (Juste les chiffres)
+
+struct SimpleCardioCard: View {
+    let workBPM: Double
+    let lifeBPM: Double
+    
+    var body: some View {
+        VStack(spacing: 15) {
+            // Titre
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "heart.fill").foregroundStyle(.pink)
+                    Text("Cardio Moyen").font(.headline)
+                }
+                Spacer()
+            }
+            
+            // Les Chiffres
+            HStack(alignment: .center) {
+                // Travail
+                VStack {
+                    Text(workBPM > 0 ? "\(Int(workBPM))" : "--")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(.pink)
+                    Text("Travail (BPM)")
+                        .font(.caption2).bold().foregroundStyle(.pink.opacity(0.8))
+                }
+                .frame(maxWidth: .infinity)
+                
+                // Séparateur vertical
+                Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1, height: 30)
+                
+                // Perso
+                VStack {
+                    Text(lifeBPM > 0 ? "\(Int(lifeBPM))" : "--")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(.gray)
+                    Text("Perso (BPM)")
+                        .font(.caption2).bold().foregroundStyle(.gray)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.1), lineWidth: 1))
+    }
 }
 
 // MARK: - VUE SALAIRE AVEC PDF

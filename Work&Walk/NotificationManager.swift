@@ -13,87 +13,90 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if granted {
-                print("Permission notifications accordée")
-                // On programme tout par défaut si l'utilisateur accepte
+                print("Permission accordée")
                 DispatchQueue.main.async {
+                    // On lance tout par défaut
                     self.scheduleAllNotifications()
                 }
-            } else {
-                print("Permission refusée: \(String(describing: error))")
             }
         }
     }
     
-    // 2. Programmer TOUTES les notifications
+    // 👇 C'EST CETTE FONCTION QUI MANQUAIT !
+    // Elle sert de "pont" pour que SettingsView et ContentView ne plantent pas.
     func scheduleAllNotifications() {
-        // Nettoyage préalable
-        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        // 1. On lance les notifs fixes (Dimanche + Mensuel)
+        scheduleStaticNotifications()
         
-        scheduleDailyReminder()
-        scheduleWeeklyRecap()
-        scheduleMonthlyReport()
+        // 2. On lance les notifs intelligentes (Lundi + Semaine)
+        // Par défaut, on considère que c'est un "Ancien" utilisateur (standard)
+        // Le ContentView affinera ça au prochain lancement de l'app si besoin.
+        updateContextualNotifications(isNewUser: false)
     }
     
-    // Annuler tout (si on décoche dans les réglages)
-    func cancelAll() {
-        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+    // 2. Les notifications FIXES (Bilan Hebdo & Mensuel)
+    func scheduleStaticNotifications() {
+        // Bilan Hebdo (Dimanche 20h)
+        let contentHebdo = UNMutableNotificationContent()
+        contentHebdo.title = String(localized: "Bilan de la semaine 📊")
+        contentHebdo.body = String(localized: "Votre récapitulatif est prêt ! Découvrez vos stats.")
+        contentHebdo.sound = .default
+        var dateHebdo = DateComponents(); dateHebdo.weekday = 1; dateHebdo.hour = 20; dateHebdo.minute = 0
+        let trigHebdo = UNCalendarNotificationTrigger(dateMatching: dateHebdo, repeats: true)
+        let reqHebdo = UNNotificationRequest(identifier: "weekly_recap", content: contentHebdo, trigger: trigHebdo)
+        
+        // Bilan Mensuel (1er du mois 09h)
+        let contentMensuel = UNMutableNotificationContent()
+        contentMensuel.title = String(localized: "Salaire du mois disponible 💰")
+        contentMensuel.body = String(localized: "Le mois est terminé. Venez consulter votre estimation de salaire net !")
+        contentMensuel.sound = .default
+        var dateMensuel = DateComponents(); dateMensuel.day = 1; dateMensuel.hour = 9; dateMensuel.minute = 0
+        let trigMensuel = UNCalendarNotificationTrigger(dateMatching: dateMensuel, repeats: true)
+        let reqMensuel = UNNotificationRequest(identifier: "monthly_report", content: contentMensuel, trigger: trigMensuel)
+        
+        UNUserNotificationCenter.current().add(reqHebdo)
+        UNUserNotificationCenter.current().add(reqMensuel)
     }
     
-    // --- A. RAPPEL QUOTIDIEN (Lundi -> Vendredi à 19h00) ---
-    private func scheduleDailyReminder() {
-        let content = UNMutableNotificationContent()
-        content.title = String(localized: "Oubli ? ✍️")
-        content.body = String(localized: "Avez-vous travaillé aujourd'hui ? Ajoutez vos heures pour mettre à jour votre planning.")
-        content.sound = .default
+    // 3. Les notifications INTELLIGENTES (Lundi matin + Rappel Saisie)
+    func updateContextualNotifications(isNewUser: Bool) {
+        let center = UNUserNotificationCenter.current()
         
-        // 2=Lundi ... 6=Vendredi
-        for weekday in 2...6 {
-            var dateComponents = DateComponents()
-            dateComponents.weekday = weekday
-            dateComponents.hour = 19
-            dateComponents.minute = 0
-
-            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-            let request = UNNotificationRequest(identifier: "daily_reminder_\(weekday)", content: content, trigger: trigger)
-            UNUserNotificationCenter.current().add(request)
+        // A. MOTIVATION LUNDI (08h00)
+        let contentMonday = UNMutableNotificationContent()
+        if isNewUser {
+            contentMonday.title = String(localized: "Bienvenue ! 👋")
+            contentMonday.body = String(localized: "C'est lundi ! Ajoutez votre première session pour commencer.")
+        } else {
+            contentMonday.title = String(localized: "Nouvelle semaine ! 🚀")
+            contentMonday.body = String(localized: "Allez ! Fais en sorte de te surpasser cette semaine !")
+        }
+        contentMonday.sound = .default
+        var dateMonday = DateComponents(); dateMonday.weekday = 2; dateMonday.hour = 8; dateMonday.minute = 0
+        let trigMonday = UNCalendarNotificationTrigger(dateMatching: dateMonday, repeats: true)
+        let reqMonday = UNNotificationRequest(identifier: "monday_motivation", content: contentMonday, trigger: trigMonday)
+        center.add(reqMonday)
+        
+        // B. RAPPEL SAISIE (Semaine 19h00)
+        let contentDaily = UNMutableNotificationContent()
+        contentDaily.sound = .default
+        if isNewUser {
+            contentDaily.title = String(localized: "Première étape ✍️")
+            contentDaily.body = String(localized: "N'oubliez pas de noter vos horaires pour calculer votre salaire.")
+        } else {
+            contentDaily.title = String(localized: "Oubli ? ✍️")
+            contentDaily.body = String(localized: "Avez-vous travaillé aujourd'hui ? Ajoutez vos heures.")
+        }
+        
+        for weekday in 2...6 { // Lundi à Vendredi
+            var dateDaily = DateComponents(); dateDaily.weekday = weekday; dateDaily.hour = 19; dateDaily.minute = 0
+            let trigDaily = UNCalendarNotificationTrigger(dateMatching: dateDaily, repeats: true)
+            let reqDaily = UNNotificationRequest(identifier: "daily_reminder_\(weekday)", content: contentDaily, trigger: trigDaily)
+            center.add(reqDaily)
         }
     }
     
-    // --- B. BILAN HEBDOMADAIRE (Dimanche à 20h00) ---
-    private func scheduleWeeklyRecap() {
-        let content = UNMutableNotificationContent()
-        content.title = String(localized: "Bilan de la semaine 📊")
-        content.body = String(localized: "Votre récapitulatif est prêt ! Découvrez vos heures et vos pas de la semaine.")
-        content.sound = .default
-        
-        var dateComponents = DateComponents()
-        dateComponents.weekday = 1 // Dimanche
-        dateComponents.hour = 20
-        dateComponents.minute = 0
-        
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-        let request = UNNotificationRequest(identifier: "weekly_recap", content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request)
-    }
-    
-    // --- C. BILAN MENSUEL (Le 1er du mois à 09h00) ---
-    private func scheduleMonthlyReport() {
-        let content = UNMutableNotificationContent()
-        content.title = String(localized: "Salaire du mois disponible 💰")
-        content.body = String(localized: "Le mois est terminé. Venez consulter votre estimation de salaire net !")
-        content.sound = .default
-        
-        var dateComponents = DateComponents()
-        dateComponents.day = 1 // Le 1er
-        dateComponents.hour = 9
-        dateComponents.minute = 0
-        
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-        let request = UNNotificationRequest(identifier: "monthly_report", content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request)
-    }
-    
-    // 3. GESTION DU CLIC (Redirection vers le bon onglet)
+    // 4. GESTION DU CLIC
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let id = response.notification.request.identifier
         
@@ -102,7 +105,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
                 NotificationCenter.default.post(name: NSNotification.Name("OpenAnalyseTab"), object: nil)
             } else if id == "monthly_report" {
                 NotificationCenter.default.post(name: NSNotification.Name("OpenSalaryTab"), object: nil)
-            } else if id.contains("daily_reminder") {
+            } else if id.contains("daily_reminder") || id == "monday_motivation" {
                 NotificationCenter.default.post(name: NSNotification.Name("OpenPlanningTab"), object: nil)
             }
         }
@@ -111,5 +114,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound])
+    }
+    
+    func cancelAll() {
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
 }
