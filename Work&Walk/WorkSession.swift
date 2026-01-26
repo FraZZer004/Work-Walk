@@ -7,6 +7,7 @@ final class WorkSession {
     var startTime: Date
     var endTime: Date?
     var hourlyRate: Double
+    var steps: Double = 0.0
     
     // Constructeur mis à jour : permet de définir directement la fin si on veut
     init(startTime: Date = Date(), endTime: Date? = nil, hourlyRate: Double = 15.0) {

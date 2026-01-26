@@ -65,19 +65,21 @@ struct ContentView: View {
     }
 }
 
-// MARK: - 1. VUE DASHBOARD
 
 struct DashboardView: View {
     @State private var healthManager = HealthManager()
     @Query(sort: \WorkSession.startTime, order: .reverse) private var sessions: [WorkSession]
     @State private var weeklyData: [DailyActivity] = []
-    @State private var showingSettings = false
-    @State private var showingEditDashboard = false
+    
+    // --- ÉTATS DE NAVIGATION ---
+    @State private var showSettings = false       // Corrigé (était showingSettings)
+    @State private var showEditDashboard = false  // Corrigé (était showingEditDashboard)
+    @State private var showTrophies = false       // ✅ AJOUTÉ : Manquait pour le bouton Trophées
     
     @AppStorage("username") private var username: String = "Utilisateur"
     @AppStorage("dashboardWidgetsJSON") private var widgetsJSON: String = ""
     @AppStorage("userProfileImage") private var userProfileImageBase64: String = ""
-    @AppStorage("selectedLanguage") private var selectedLanguage: String = "fr" // Nécessaire pour les dates
+    @AppStorage("selectedLanguage") private var selectedLanguage: String = "fr"
     
     @State private var widgets: [DashboardWidget] = []
     
@@ -89,35 +91,57 @@ struct DashboardView: View {
                     HStack(spacing: 15) {
                         // Photo Profil
                         if let avatar = userAvatar {
-                            Image(uiImage: avatar).resizable().scaledToFill().frame(width: 50, height: 50).clipShape(Circle()).overlay(Circle().stroke(Color.orange, lineWidth: 2)).shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
+                            Image(uiImage: avatar)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 50, height: 50)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.orange, lineWidth: 2))
+                                .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
                         } else {
-                            ZStack { Circle().fill(Color(UIColor.systemGray5)).frame(width: 50, height: 50); Image(systemName: "person.fill").foregroundStyle(.gray).font(.title3) }
+                            ZStack {
+                                Circle().fill(Color(UIColor.systemGray5)).frame(width: 50, height: 50)
+                                Image(systemName: "person.fill").foregroundStyle(.gray).font(.title3)
+                            }
                         }
                         
                         VStack(alignment: .leading) {
                             Text("Bonjour,").font(.subheadline).foregroundStyle(.secondary)
-                            Text(username.isEmpty ? "Bienvenue" : username).font(.largeTitle).bold().foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
+                            Text(username.isEmpty ? "Bienvenue" : username)
+                                .font(.largeTitle).bold()
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                         Spacer()
-                        Button(action: { showingEditDashboard = true }) {
-                            Image(systemName: "list.bullet.circle.fill").font(.system(size: 32)).foregroundStyle(.orange.opacity(0.8))
+                        
+                        // Bouton Éditer Dashboard ( Widgets )
+                        Button(action: { showEditDashboard = true }) {
+                            Image(systemName: "list.bullet.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundStyle(.orange.opacity(0.8))
                         }
-                    }.padding(.horizontal).padding(.top, 10)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 10)
                     
-                    // Résumé
+                    // Résumé Rapide
                     HStack(spacing: 15) {
                         statCard(icon: "figure.walk", color: .orange, title: "Pas Auj.", value: "\(Int(healthManager.stepsToday))")
                         statCard(icon: "briefcase.fill", color: .orange, title: "Travail Auj.", value: calculateTodayWorkHours())
                     }.padding(.horizontal)
                     
-                    // Widgets
+                    // Widgets Dynamiques
                     ForEach(widgets) { widget in
-                        if widget.isVisible { DynamicChartCard(type: widget.type, data: weeklyData) }
+                        if widget.isVisible {
+                            DynamicChartCard(type: widget.type, data: weeklyData)
+                        }
                     }
                     
-                    // Bouton Mise à jour
+                    // Bouton Mise à jour manuelle
                     Button(action: {
-                        let generator = UIImpactFeedbackGenerator(style: .medium); generator.impactOccurred()
+                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                        generator.impactOccurred()
                         calculateWeeklyStats()
                     }) {
                         HStack(spacing: 10) {
@@ -127,22 +151,57 @@ struct DashboardView: View {
                         .frame(maxWidth: .infinity).padding()
                         .background(LinearGradient(colors: [.orange, .orange.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .foregroundStyle(.white).cornerRadius(16).shadow(color: .orange.opacity(0.4), radius: 8, x: 0, y: 4)
-                    }.padding(.horizontal).padding(.top, 10).padding(.bottom, 20)
+                    }
+                    .padding(.horizontal).padding(.top, 10).padding(.bottom, 20)
+                    
                 }.padding(.top).padding(.bottom, 50)
             }
             .navigationTitle("Tableau de Bord")
+            
+            // --- BARRE D'OUTILS (TOOLBAR) ---
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { showingSettings = true }) { Image(systemName: "gearshape.fill").foregroundStyle(.gray) }
+                    HStack(spacing: 16) {
+                        
+                        // 1. Bouton TROPHÉES
+                        Button {
+                            showTrophies = true
+                        } label: {
+                            Image(systemName: "trophy.circle.fill")
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(.yellow, .orange)
+                                .font(.system(size: 24))
+                        }
+                        
+                        // 2. Bouton PARAMÈTRES
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .foregroundStyle(.gray)
+                                .font(.system(size: 20))
+                        }
+                    }
                 }
             }
-            .sheet(isPresented: $showingSettings) { SettingsView() }
-            .sheet(isPresented: $showingEditDashboard) { DashboardConfigView(widgets: $widgets) }
-            .onAppear { loadWidgets(); healthManager.requestAuthorization(); calculateWeeklyStats()
-                NotificationManager.shared.requestAuthorization()}
+            
+            // --- GESTION DES FEUILLES (SHEETS) ---
+            .sheet(isPresented: $showSettings) { SettingsView() }
+            .sheet(isPresented: $showEditDashboard) { DashboardConfigView(widgets: $widgets) }
+            .sheet(isPresented: $showTrophies) { TrophiesView() } // ✅ AJOUTÉ ICI
+            
+            // --- CHARGEMENT ---
+            .onAppear {
+                loadWidgets()
+                healthManager.requestAuthorization()
+                calculateWeeklyStats()
+                NotificationManager.shared.requestAuthorization()
+            }
             .onChange(of: widgets) { _, _ in saveWidgets() }
         }
     }
+    
+    // --- LOGIQUE METIER ---
     
     var userAvatar: UIImage? {
         if !userProfileImageBase64.isEmpty, let data = Data(base64Encoded: userProfileImageBase64) { return UIImage(data: data) }
@@ -156,7 +215,10 @@ struct DashboardView: View {
             if let data = widgetsJSON.data(using: .utf8), let decoded = try? JSONDecoder().decode([DashboardWidget].self, from: data) { widgets = decoded }
         }
     }
-    func saveWidgets() { if let encoded = try? JSONEncoder().encode(widgets), let jsonString = String(data: encoded, encoding: .utf8) { widgetsJSON = jsonString } }
+    
+    func saveWidgets() {
+        if let encoded = try? JSONEncoder().encode(widgets), let jsonString = String(data: encoded, encoding: .utf8) { widgetsJSON = jsonString }
+    }
     
     func statCard(icon: String, color: Color, title: String, value: String) -> some View {
         VStack(alignment: .leading) {
@@ -202,7 +264,6 @@ struct DashboardView: View {
     
     func calculateWeeklyStats() {
         var newDailyData: [DailyActivity] = []
-        // On utilise la locale dynamique pour les noms de jours
         let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "EE"
         let calendar = Calendar.current; let today = Date(); let group = DispatchGroup()
         
@@ -211,8 +272,8 @@ struct DashboardView: View {
             let dayName = i == 0 ? (selectedLanguage == "en" ? "Today" : "Auj.") : f.string(from: date)
             let startOfDay = calendar.startOfDay(for: date); let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
             group.enter()
-            // (Logique identique à avant, raccourcie pour la place)
             var dWSteps:Double=0; var dLSteps:Double=0; var dWCal:Double=0; var dLCal:Double=0; var dWDist:Double=0; var dLDist:Double=0; var dWHeart:Double=0; var dLHeart:Double=0
+            
             if let session = sessions.first(where: { calendar.isDate($0.startTime, inSameDayAs: date) }) {
                 let sStart = session.startTime; let sEnd = session.endTime ?? Date(); let iG = DispatchGroup()
                 iG.enter(); healthManager.fetchQuantity(type: .stepCount, start: sStart, end: sEnd) { v in dWSteps=v; iG.leave() }
