@@ -1,27 +1,25 @@
-//
-//  AnalysisView.swift
-//  Work&Walk
-//
-//  Created by Alan Krieger on 27/01/2026.
-//
-
-
 import SwiftUI
 import SwiftData
 import Charts
 import HealthKit
+
+// MARK: - VUE PRINCIPALE ANALYSE
 
 struct AnalysisView: View {
     @State private var healthManager = HealthManager()
     @Query(sort: \WorkSession.startTime, order: .reverse) private var sessions: [WorkSession]
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "fr"
     
-    // États de données
+    // 🗓️ ÉTAT POUR LA NAVIGATION
+    @State private var selectedDate: Date = Date()
+    
+    // États de données calculées
     @State private var totalWorkSteps: Double = 0; @State private var totalLifeSteps: Double = 0
     @State private var totalWorkCal: Double = 0;   @State private var totalLifeCal: Double = 0
     @State private var totalWorkDist: Double = 0;  @State private var totalLifeDist: Double = 0
     @State private var avgWorkHeart: Double = 0;   @State private var avgLifeHeart: Double = 0
     
+    // Données détaillées
     @State private var historySteps: [DailyData] = []; @State private var historyCal: [DailyData] = []
     @State private var historyDist: [DailyData] = []; @State private var historyHeart: [DailyData] = []
     
@@ -32,10 +30,89 @@ struct AnalysisView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 25) {
-                    WeeklyRecapView().padding(.top)
+                    
+                    // 1. LE RÉCAP HEBDO (Avec Logique de Verrouillage 🔒)
+                    WeeklyRecapView(
+                        referenceDate: selectedDate,
+                        isLocked: isSelectedDateCurrentWeek()
+                    )
+                    .padding(.top)
+                    
+                    // 2. DÉTAILS PAR ACTIVITÉ
                     VStack(alignment: .leading, spacing: 15) {
-                        Text("Détails par activité").font(.title3).bold().padding(.horizontal)
-                        if isLoading { HStack { Spacer(); ProgressView(); Spacer() }.padding(30) } else {
+                        
+                        Text("Détails par activité")
+                            .font(.title3).bold()
+                            .padding(.horizontal)
+                        
+                        // BARRE DE NAVIGATION (Date)
+                        VStack(spacing: 10) {
+                            HStack {
+                                Button(action: { changeWeek(by: -1) }) {
+                                    Image(systemName: "chevron.left.circle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                VStack(spacing: 2) {
+                                    Text("Période analysée")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .textCase(.uppercase)
+                                    
+                                    Text(dateRangeString())
+                                        .font(.headline)
+                                        .bold()
+                                        .foregroundStyle(.primary)
+                                        .contentTransition(.numericText())
+                                }
+                                
+                                Spacer()
+                                
+                                Button(action: { changeWeek(by: 1) }) {
+                                    Image(systemName: "chevron.right.circle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(isSelectedDateCurrentWeek() ? Color.gray.opacity(0.3) : .secondary)
+                                }
+                                .disabled(isSelectedDateCurrentWeek())
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(12)
+                            
+                            // 👇 LE BOUTON "REVENIR À AUJOURD'HUI" (Apparaît si on est dans le passé)
+                            if !isSelectedDateCurrentWeek() {
+                                Button(action: {
+                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    generator.impactOccurred()
+                                    withAnimation {
+                                        selectedDate = Date() // Retour au présent
+                                        analyzeWeek()
+                                    }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "arrow.counterclockwise")
+                                        Text("Revenir à la semaine en cours")
+                                    }
+                                    .font(.caption).bold()
+                                    .foregroundStyle(.orange)
+                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, 12)
+                                    .background(Color.orange.opacity(0.1))
+                                    .clipShape(Capsule())
+                                }
+                                .transition(.scale.combined(with: .opacity)) // Animation d'apparition
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        // 3. LES CARTES DE SCORE
+                        if isLoading {
+                            HStack { Spacer(); ProgressView(); Spacer() }.padding(30)
+                        } else {
                             VStack(spacing: 12) {
                                 SimpleScoreCard(type: .steps, workVal: totalWorkSteps, lifeVal: totalLifeSteps).onTapGesture { selectedMetric = .steps }
                                 SimpleScoreCard(type: .calories, workVal: totalWorkCal, lifeVal: totalLifeCal).onTapGesture { selectedMetric = .calories }
@@ -44,36 +121,69 @@ struct AnalysisView: View {
                             }.padding(.horizontal)
                         }
                     }
+                    
                     Text("Données calculées sur les sessions saisies dans le Planning.").font(.caption2).foregroundStyle(.tertiary).padding(.bottom, 30)
                 }
             }
             .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("Analyse")
-            .onAppear { healthManager.requestAuthorization(); analyzeWeek() }
-            .sheet(item: $selectedMetric) { metric in DetailMetricView(type: metric, data: getDataFor(metric), language: selectedLanguage) }
+            .onAppear {
+                healthManager.requestAuthorization()
+                analyzeWeek()
+            }
+            .sheet(item: $selectedMetric) { metric in
+                DetailMetricView(type: metric, data: getDataFor(metric), language: selectedLanguage)
+            }
         }
     }
     
-    func getDataFor(_ type: MetricType) -> [DailyData] {
-        switch type { case .steps: return historySteps; case .calories: return historyCal; case .distance: return historyDist; case .heart: return historyHeart }
+    // --- HELPERS NAVIGATION ---
+    func changeWeek(by weeks: Int) {
+        if let new = Calendar.current.date(byAdding: .day, value: weeks * 7, to: selectedDate) {
+            selectedDate = (new > Date()) ? Date() : new
+            analyzeWeek()
+        }
     }
     
+    func isSelectedDateCurrentWeek() -> Bool {
+        Calendar.current.isDate(selectedDate, equalTo: Date(), toGranularity: .weekOfYear)
+    }
+    
+    func dateRangeString() -> String {
+        var calendar = Calendar.current; calendar.locale = Locale(identifier: selectedLanguage)
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: selectedDate) else { return "" }
+        let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "d MMM"
+        let endOfWeekDisplay = calendar.date(byAdding: .day, value: -1, to: weekInterval.end) ?? weekInterval.end
+        return "\(f.string(from: weekInterval.start)) - \(f.string(from: endOfWeekDisplay))"
+    }
+    
+    func getDataFor(_ type: MetricType) -> [DailyData] { switch type { case .steps: return historySteps; case .calories: return historyCal; case .distance: return historyDist; case .heart: return historyHeart } }
+    
     func analyzeWeek() {
-        isLoading = true; let calendar = Calendar.current; let today = Date(); let group = DispatchGroup(); let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "EE"
+        isLoading = true; var calendar = Calendar.current; calendar.locale = Locale(identifier: selectedLanguage)
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: selectedDate) else { isLoading = false; return }
+        let startOfWeek = weekInterval.start
+        
+        let group = DispatchGroup()
+        let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "EE"
+        
         var tWSteps: Double=0; var tLSteps: Double=0; var tWCal: Double=0; var tLCal: Double=0
         var tWDist: Double=0; var tLDist: Double=0; var tWBPM: [Double]=[]; var tLBPM: [Double]=[]
         var tempHistS: [DailyData]=[]; var tempHistC: [DailyData]=[]; var tempHistD: [DailyData]=[]; var tempHistH: [DailyData]=[]
         
         for i in 0..<7 {
-            guard let date = calendar.date(byAdding: .day, value: -i, to: today) else { continue }
-            let dayName = i == 0 ? (selectedLanguage == "en" ? "Today" : "Auj.") : f.string(from: date); let startOfDay = calendar.startOfDay(for: date); let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-            group.enter(); var dWSteps:Double=0; var dLSteps:Double=0; var dWCal:Double=0; var dLCal:Double=0; var dWDist:Double=0; var dLDist:Double=0; var dWHeart:Double=0; var dLHeart:Double=0
+            guard let date = calendar.date(byAdding: .day, value: i, to: startOfWeek) else { continue }
+            let dayName = f.string(from: date); let startOfDay = calendar.startOfDay(for: date); let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+            group.enter()
+            var dWSteps:Double=0; var dLSteps:Double=0; var dWCal:Double=0; var dLCal:Double=0; var dWDist:Double=0; var dLDist:Double=0; var dWHeart:Double=0; var dLHeart:Double=0
+            
             if let session = sessions.first(where: { calendar.isDate($0.startTime, inSameDayAs: date) }) {
-                let sStart = session.startTime; let sEnd = session.endTime ?? Date(); let iG = DispatchGroup()
-                iG.enter(); healthManager.fetchQuantity(type: .stepCount, start: sStart, end: sEnd) { v in dWSteps=v; iG.leave() }
-                iG.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: sStart, end: sEnd) { v in dWCal=v; iG.leave() }
-                iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: sStart, end: sEnd) { v in dWDist=v; iG.leave() }
-                iG.enter(); healthManager.fetchQuantity(type: .heartRate, start: sStart, end: sEnd) { v in dWHeart=v; iG.leave() }
+                let sStart = session.startTime; let sEnd = session.endTime ?? Date(); let safeEnd = min(sEnd, endOfDay)
+                let iG = DispatchGroup()
+                iG.enter(); healthManager.fetchQuantity(type: .stepCount, start: sStart, end: safeEnd) { v in dWSteps=v; iG.leave() }
+                iG.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: sStart, end: safeEnd) { v in dWCal=v; iG.leave() }
+                iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: sStart, end: safeEnd) { v in dWDist=v; iG.leave() }
+                iG.enter(); healthManager.fetchQuantity(type: .heartRate, start: sStart, end: safeEnd) { v in dWHeart=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .stepCount, start: startOfDay, end: endOfDay) { v in dLSteps=max(0,v-dWSteps); iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: startOfDay, end: endOfDay) { v in dLCal=max(0,v-dWCal); iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: startOfDay, end: endOfDay) { v in dLDist=max(0,v-dWDist); iG.leave() }
@@ -105,16 +215,27 @@ struct AnalysisView: View {
             }
         }
         group.notify(queue: .main) {
-            self.totalWorkSteps = tWSteps/7; self.totalLifeSteps = tLSteps/7; self.totalWorkCal = tWCal/7; self.totalLifeCal = tLCal/7; self.totalWorkDist = tWDist/7; self.totalLifeDist = tLDist/7
-            let sW = tWBPM.reduce(0, +); self.avgWorkHeart = tWBPM.isEmpty ? 0 : sW/Double(tWBPM.count); let sL = tLBPM.reduce(0, +); self.avgLifeHeart = tLBPM.isEmpty ? 0 : sL/Double(tLBPM.count)
-            self.historySteps = tempHistS.sorted(by: { $0.date < $1.date }); self.historyCal = tempHistC.sorted(by: { $0.date < $1.date })
-            self.historyDist = tempHistD.sorted(by: { $0.date < $1.date }); self.historyHeart = tempHistH.sorted(by: { $0.date < $1.date })
-            self.isLoading = false
+            withAnimation {
+                self.totalWorkSteps = tWSteps/7; self.totalLifeSteps = tLSteps/7
+                self.totalWorkCal = tWCal/7; self.totalLifeCal = tLCal/7
+                self.totalWorkDist = tWDist/7; self.totalLifeDist = tLDist/7
+                let sW = tWBPM.reduce(0, +); self.avgWorkHeart = tWBPM.isEmpty ? 0 : sW/Double(tWBPM.count)
+                let sL = tLBPM.reduce(0, +); self.avgLifeHeart = tLBPM.isEmpty ? 0 : sL/Double(tLBPM.count)
+                self.historySteps = tempHistS.sorted(by: { $0.date < $1.date }); self.historyCal = tempHistC.sorted(by: { $0.date < $1.date })
+                self.historyDist = tempHistD.sorted(by: { $0.date < $1.date }); self.historyHeart = tempHistH.sorted(by: { $0.date < $1.date })
+                self.isLoading = false
+            }
         }
     }
 }
 
+// MARK: - SOUS-VUES
+
+// 1. WeeklyRecapView (AVEC TIMER DE DÉVERROUILLAGE 🔒)
 struct WeeklyRecapView: View {
+    let referenceDate: Date
+    let isLocked: Bool
+    
     @Query private var sessions: [WorkSession]
     @State private var healthManager = HealthManager()
     @AppStorage("selectedLanguage") private var selectedLanguage: String = "fr"
@@ -122,21 +243,107 @@ struct WeeklyRecapView: View {
     @State private var animatedHours: Double = 0; @State private var animatedSteps: Double = 0
     @State private var animatedDist: Double = 0; @State private var animatedCal: Double = 0
     @State private var weeklyWorkData: [Double] = [0,0,0,0,0,0,0]
+    
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) { Text("CETTE SEMAINE").font(.caption).fontWeight(.bold).foregroundStyle(.white.opacity(0.7)); Text(getDateRange()).font(.caption2).foregroundStyle(.white.opacity(0.5)) }
-                Spacer(); if animatedHours > 0 { HStack(spacing: 4) { Image(systemName: "flame.fill"); Text("Actif") }.font(.caption2).bold().padding(.horizontal, 8).padding(.vertical, 4).background(.white.opacity(0.2)).cornerRadius(10).foregroundStyle(.white) }
-            }.padding(.bottom, 20)
-            HStack(alignment: .firstTextBaseline) { Text(String(format: "%.1f", animatedHours)).font(.system(size: 54, weight: .heavy, design: .rounded)).foregroundStyle(.white).contentTransition(.numericText()); Text("heures").font(.title3).fontWeight(.medium).foregroundStyle(.white.opacity(0.8)); Spacer(); HStack(alignment: .bottom, spacing: 4) { ForEach(0..<7, id: \.self) { index in VStack { Spacer(); RoundedRectangle(cornerRadius: 2).fill(.white.opacity(weeklyWorkData[index] > 0 ? 0.9 : 0.2)).frame(width: 6, height: showAnimations ? CGFloat(min(40, max(4, weeklyWorkData[index] * 3))) : 0) }.frame(height: 40) } } }.padding(.bottom, 25)
-            HStack(spacing: 0) { StatBox(icon: "figure.walk", val: "\(Int(animatedSteps))", label: "Pas", delay: 0.1); Divider().background(.white.opacity(0.2)).frame(height: 30); StatBox(icon: "map.fill", val: String(format: "%.1f", animatedDist), label: "Km", delay: 0.2); Divider().background(.white.opacity(0.2)).frame(height: 30); StatBox(icon: "flame.fill", val: "\(Int(animatedCal))", label: "Kcal", delay: 0.3) }.padding(.top, 15).background(Color.white.opacity(0.1)).cornerRadius(12)
-        }.padding(24).background(ZStack { LinearGradient(colors: [Color.orange, Color.orange.opacity(0.85), Color.red.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing); Circle().fill(.white.opacity(0.05)).frame(width: 200).offset(x: 100, y: -100); Circle().fill(.white.opacity(0.05)).frame(width: 150).offset(x: -120, y: 80) }).cornerRadius(24).shadow(color: .orange.opacity(0.4), radius: 15, x: 0, y: 8).padding(.horizontal).onAppear { loadData(); withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { showAnimations = true } }.onChange(of: sessions) { _, _ in loadData() }
+        ZStack {
+            // --- CONTENU PRINCIPAL ---
+            VStack(spacing: 0) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(Calendar.current.isDate(referenceDate, equalTo: Date(), toGranularity: .weekOfYear) ? "CETTE SEMAINE" : "RÉSUMÉ")
+                            .font(.caption).fontWeight(.bold).foregroundStyle(.white.opacity(0.7))
+                        Text(getDateRange()).font(.caption2).foregroundStyle(.white.opacity(0.5))
+                    }
+                    Spacer(); if animatedHours > 0 { HStack(spacing: 4) { Image(systemName: "flame.fill"); Text("Actif") }.font(.caption2).bold().padding(.horizontal, 8).padding(.vertical, 4).background(.white.opacity(0.2)).cornerRadius(10).foregroundStyle(.white) }
+                }.padding(.bottom, 20)
+                
+                HStack(alignment: .firstTextBaseline) {
+                    Text(String(format: "%.1f", animatedHours)).font(.system(size: 54, weight: .heavy, design: .rounded)).foregroundStyle(.white).contentTransition(.numericText())
+                    Text("heures").font(.title3).fontWeight(.medium).foregroundStyle(.white.opacity(0.8))
+                    Spacer()
+                    HStack(alignment: .bottom, spacing: 4) {
+                        ForEach(0..<7, id: \.self) { index in
+                            VStack { Spacer(); RoundedRectangle(cornerRadius: 2).fill(.white.opacity(weeklyWorkData[index] > 0 ? 0.9 : 0.2)).frame(width: 6, height: showAnimations ? CGFloat(min(40, max(4, weeklyWorkData[index] * 3))) : 0) }.frame(height: 40)
+                        }
+                    }
+                }.padding(.bottom, 25)
+                
+                HStack(spacing: 0) {
+                    StatBox(icon: "figure.walk", val: "\(Int(animatedSteps))", label: "Pas", delay: 0.1); Divider().background(.white.opacity(0.2)).frame(height: 30)
+                    StatBox(icon: "map.fill", val: String(format: "%.1f", animatedDist), label: "Km", delay: 0.2); Divider().background(.white.opacity(0.2)).frame(height: 30)
+                    StatBox(icon: "flame.fill", val: "\(Int(animatedCal))", label: "Kcal", delay: 0.3)
+                }
+                .padding(.top, 15).background(Color.white.opacity(0.1)).cornerRadius(12)
+            }
+            .padding(24)
+            .blur(radius: isLocked ? 10 : 0) // Flou si verrouillé
+            
+            // --- OVERLAY DE VERROUILLAGE 🔒 ---
+            if isLocked {
+                Rectangle().fill(.ultraThinMaterial).opacity(0.6).cornerRadius(24)
+                VStack(spacing: 15) {
+                    Circle().fill(.white.opacity(0.2)).frame(width: 60, height: 60).overlay(Image(systemName: "lock.fill").font(.title).foregroundStyle(.white))
+                    VStack(spacing: 5) {
+                        Text("Récap en cours...").font(.headline).foregroundStyle(.white)
+                        Text("Disponible dans :").font(.caption).foregroundStyle(.white.opacity(0.7))
+                        CountdownView(targetDate: nextMonday()).font(.system(.title3, design: .monospaced)).fontWeight(.bold).foregroundStyle(.orange).padding(.top, 2)
+                    }
+                }
+            }
+        }
+        .background(ZStack { LinearGradient(colors: [Color.orange, Color.orange.opacity(0.85), Color.red.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing); Circle().fill(.white.opacity(0.05)).frame(width: 200).offset(x: 100, y: -100); Circle().fill(.white.opacity(0.05)).frame(width: 150).offset(x: -120, y: 80) })
+        .cornerRadius(24).shadow(color: .orange.opacity(0.4), radius: 15, x: 0, y: 8).padding(.horizontal)
+        .onAppear { loadData(); withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { showAnimations = true } }
+        .onChange(of: referenceDate) { _, _ in loadData() }
     }
+    
+    func nextMonday() -> Date {
+        var cal = Calendar.current; cal.locale = Locale(identifier: selectedLanguage)
+        let now = Date()
+        guard let weekInterval = cal.dateInterval(of: .weekOfYear, for: now) else { return Date() }
+        return weekInterval.end // La fin de la semaine actuelle (ex: Lundi 00h00)
+    }
+    
     func StatBox(icon: String, val: String, label: String, delay: Double) -> some View { VStack(spacing: 4) { Image(systemName: icon).font(.title3).foregroundStyle(.white.opacity(0.8)).scaleEffect(showAnimations ? 1 : 0.5).animation(.bouncy.delay(delay), value: showAnimations); Text(val).font(.headline).bold().foregroundStyle(.white).contentTransition(.numericText()); Text(label).font(.caption2).foregroundStyle(.white.opacity(0.6)) }.frame(maxWidth: .infinity) }
-    func loadData() { var calendar = Calendar.current; calendar.locale = Locale(identifier: selectedLanguage); guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: Date()) else { return }; let startOfWeek = weekInterval.start; let endOfWeek = weekInterval.end; let weeklySessions = sessions.filter { $0.startTime >= startOfWeek && $0.startTime < endOfWeek }; let totalSeconds = weeklySessions.reduce(0) { tot, s in guard let end = s.endTime else { return tot }; return tot + end.timeIntervalSince(s.startTime) }; let totalHours = totalSeconds / 3600; var tempGraph: [Double] = [0,0,0,0,0,0,0]; for session in weeklySessions { let daysFromStart = calendar.dateComponents([.day], from: startOfWeek, to: session.startTime).day ?? 0; if daysFromStart >= 0 && daysFromStart < 7 { if let end = session.endTime { let h = end.timeIntervalSince(session.startTime) / 3600; tempGraph[daysFromStart] += h } } }; let group = DispatchGroup(); var s: Double=0; var d: Double=0; var c: Double=0; group.enter(); healthManager.fetchQuantity(type: .stepCount, start: startOfWeek, end: endOfWeek) { v in s = v; group.leave() }; group.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: startOfWeek, end: endOfWeek) { v in d = v; group.leave() }; group.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: startOfWeek, end: endOfWeek) { v in c = v; group.leave() }; group.notify(queue: .main) { withAnimation(.easeOut(duration: 1.0)) { self.animatedHours = totalHours; self.weeklyWorkData = tempGraph; self.animatedSteps = s; self.animatedDist = d; self.animatedCal = c } } }
-    func getDateRange() -> String { var calendar = Calendar.current; calendar.locale = Locale(identifier: selectedLanguage); guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: Date()) else { return "" }; let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "d MMM"; let endOfWeekDisplay = calendar.date(byAdding: .day, value: -1, to: weekInterval.end) ?? weekInterval.end; return "\(f.string(from: weekInterval.start)) - \(f.string(from: endOfWeekDisplay))" }
+    
+    func loadData() {
+        var calendar = Calendar.current; calendar.locale = Locale(identifier: selectedLanguage)
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: referenceDate) else { return }
+        let startOfWeek = weekInterval.start; let endOfWeek = weekInterval.end
+        let weeklySessions = sessions.filter { $0.startTime >= startOfWeek && $0.startTime < endOfWeek }
+        let totalSeconds = weeklySessions.reduce(0) { tot, s in guard let end = s.endTime else { return tot }; return tot + end.timeIntervalSince(s.startTime) }; let totalHours = totalSeconds / 3600; var tempGraph: [Double] = [0,0,0,0,0,0,0]
+        for session in weeklySessions { let daysFromStart = calendar.dateComponents([.day], from: startOfWeek, to: session.startTime).day ?? 0; if daysFromStart >= 0 && daysFromStart < 7 { if let end = session.endTime { let h = end.timeIntervalSince(session.startTime) / 3600; tempGraph[daysFromStart] += h } } }
+        let group = DispatchGroup(); var s: Double=0; var d: Double=0; var c: Double=0
+        group.enter(); healthManager.fetchQuantity(type: .stepCount, start: startOfWeek, end: endOfWeek) { v in s = v; group.leave() }
+        group.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: startOfWeek, end: endOfWeek) { v in d = v; group.leave() }
+        group.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: startOfWeek, end: endOfWeek) { v in c = v; group.leave() }
+        group.notify(queue: .main) { withAnimation(.easeOut(duration: 1.0)) { self.animatedHours = totalHours; self.weeklyWorkData = tempGraph; self.animatedSteps = s; self.animatedDist = d; self.animatedCal = c } }
+    }
+    
+    func getDateRange() -> String {
+        var calendar = Calendar.current; calendar.locale = Locale(identifier: selectedLanguage)
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: referenceDate) else { return "" }
+        let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "d MMM"
+        let endOfWeekDisplay = calendar.date(byAdding: .day, value: -1, to: weekInterval.end) ?? weekInterval.end
+        return "\(f.string(from: weekInterval.start)) - \(f.string(from: endOfWeekDisplay))"
+    }
 }
 
+// ✨ LE TIMER
+struct CountdownView: View {
+    let targetDate: Date
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1.0)) { context in Text(timeRemaining(until: targetDate, context: context)) }
+    }
+    func timeRemaining(until target: Date, context: TimelineViewDefaultContext) -> String {
+        let diff = target.timeIntervalSince(context.date)
+        if diff <= 0 { return "00j 00h 00m" }
+        let days = Int(diff) / 86400; let hours = (Int(diff) % 86400) / 3600; let minutes = (Int(diff) % 3600) / 60
+        return days > 0 ? "\(days)j \(hours)h \(minutes)m" : "\(hours)h \(minutes)m \(Int(diff) % 60)s"
+    }
+}
+
+// 2. SimpleScoreCard
 struct SimpleScoreCard: View {
     let type: MetricType; let workVal: Double; let lifeVal: Double
     var body: some View {
@@ -154,6 +361,7 @@ struct SimpleScoreCard: View {
     func iconFor(_ type: MetricType) -> String { switch type { case .steps: return "figure.walk"; case .calories: return "flame.fill"; case .distance: return "map.fill"; case .heart: return "heart.fill" } }
 }
 
+// 3. SimpleCardioCard
 struct SimpleCardioCard: View {
     let workBPM: Double; let lifeBPM: Double
     var body: some View {
@@ -168,6 +376,7 @@ struct SimpleCardioCard: View {
     }
 }
 
+// 4. DetailMetricView
 struct DetailMetricView: View {
     let type: MetricType; let data: [DailyData]; let language: String; @Environment(\.dismiss) var dismiss
     var body: some View {
