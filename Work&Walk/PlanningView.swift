@@ -1,13 +1,7 @@
-//
-//  PlanningView.swift
-//  Work&Walk
-//
-//  Created by Alan Krieger on 27/01/2026.
-//
-
-
 import SwiftUI
 import SwiftData
+
+// MARK: - VUE PRINCIPALE DU PLANNING
 
 struct PlanningView: View {
     @Query(sort: \WorkSession.startTime, order: .reverse) private var sessions: [WorkSession]
@@ -24,7 +18,6 @@ struct PlanningView: View {
     enum ViewMode: String, CaseIterable { case calendar, list }
     enum FilterScope: String, CaseIterable { case month = "Mois", year = "Année" }
     
-    // Calendrier Dynamique
     var calendar: Calendar {
         var c = Calendar.current
         c.locale = Locale(identifier: selectedLanguage)
@@ -34,10 +27,12 @@ struct PlanningView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // 1. Sélecteur Mois / Année
                 Picker("Vue", selection: $filterScope) {
                     ForEach(FilterScope.allCases, id: \.self) { scope in Text(LocalizedStringKey(scope.rawValue)).tag(scope) }
                 }.pickerStyle(.segmented).padding()
                 
+                // 2. Navigation Mois
                 HStack(spacing: 10) {
                     if filterScope == .month {
                         Menu {
@@ -64,44 +59,64 @@ struct PlanningView: View {
                     }
                 }.padding(.horizontal).padding(.bottom)
                 
+                // 3. Contenu
                 if filterScope == .year {
                     YearlySummaryView(year: selectedYear, sessions: sessions, language: selectedLanguage)
                 } else {
-                    if filteredSessions.isEmpty {
-                        if viewMode == .calendar { ScrollView {
+                    if filteredSessions.isEmpty && viewMode == .calendar {
+                        // Vue VIDE (Mode Calendrier)
+                        ScrollView {
                             VStack(spacing: 20) {
-                                totalHoursBadge(sessions: filteredSessions)
-                                
-                                MonthGridView(
-                                    year: selectedYear,
-                                    month: selectedMonth,
-                                    sessions: filteredSessions,
-                                    language: selectedLanguage,
-                                    onSelectDay: { date, session in
-                                        if let session = session {
-                                            let generator = UIImpactFeedbackGenerator(style: .light)
-                                            generator.impactOccurred()
-                                            sessionToEdit = session
-                                        }
-                                    }
-                                )
-                            }
-                            .padding(.top)
-                        } }
-                        else { ContentUnavailableView("Aucune session", systemImage: "calendar.badge.exclamationmark", description: Text("Aucune heure pour \(monthName(selectedMonth)) \(String(selectedYear)).")) }
+                                totalHoursBadge(sessions: [])
+                                MonthGridView(year: selectedYear, month: selectedMonth, sessions: [], language: selectedLanguage, onEditSession: { _ in })
+                            }.padding(.top)
+                        }
                     } else {
+                        // Vue AVEC DONNÉES ou LISTE (Même vide)
                         if viewMode == .list {
                             List {
-                                ForEach(groupedSessionsByDay, id: \.key) { day, sessionsInDay in
-                                    Section(header: Text(day.capitalized)) {
-                                        ForEach(sessionsInDay) { session in
-                                            SessionRow(session: session, language: selectedLanguage).swipeActions(edge: .leading) { Button { sessionToEdit = session } label: { Label("Modifier", systemImage: "pencil") }.tint(.orange) }
-                                        }.onDelete(perform: { indexSet in deleteItems(offsets: indexSet, in: sessionsInDay) })
+                                // 1. Section Épinglée : AUJOURD'HUI
+                                todaySection
+                                
+                                // 2. Historique COMPLET du mois (Jours travaillés ET repos)
+                                // On filtre pour ne pas réafficher "Aujourd'hui" s'il est dans la liste
+                                ForEach(getAllDaysInSelectedMonth().filter { !calendar.isDateInToday($0) }, id: \.self) { date in
+                                    
+                                    // On cherche si une session existe pour ce jour
+                                    let sessionForDay = sessions.first { calendar.isDate($0.startTime, inSameDayAs: date) }
+                                    
+                                    Section(header: Text(formatDayTitle(date))) {
+                                        if let session = sessionForDay {
+                                            // Jour Travaillé
+                                            SessionRow(session: session, language: selectedLanguage)
+                                                .swipeActions(edge: .leading) {
+                                                    Button { sessionToEdit = session } label: { Label("Modifier", systemImage: "pencil") }.tint(.orange)
+                                                }
+                                        } else {
+                                            // Jour Repos / Vide
+                                            HStack {
+                                                Image(systemName: "pause.circle") // Icône discrète
+                                                    .foregroundStyle(.tertiary)
+                                                Text("Repos / Pas de saisie")
+                                                    .font(.subheadline)
+                                                    .foregroundStyle(.tertiary)
+                                                    .italic()
+                                                Spacer()
+                                            }
+                                            .padding(.vertical, 4)
+                                        }
                                     }
                                 }
                             }.listStyle(.insetGrouped)
                         } else {
-                            ScrollView { VStack(spacing: 20) { totalHoursBadge(sessions: filteredSessions); MonthGridView(year: selectedYear, month: selectedMonth, sessions: filteredSessions, language: selectedLanguage, onSelectDay: { _, _ in }) }.padding(.top) }
+                            // MODE CALENDRIER
+                            ScrollView {
+                                VStack(spacing: 20) {
+                                    totalHoursBadge(sessions: filteredSessions)
+                                    MonthGridView(year: selectedYear, month: selectedMonth, sessions: filteredSessions, language: selectedLanguage, onEditSession: { session in sessionToEdit = session })
+                                    Text("Appuyez pour voir le détail. Maintenez pour modifier.").font(.caption2).foregroundStyle(.secondary).padding(.top)
+                                }.padding(.top)
+                            }
                         }
                     }
                 }
@@ -119,7 +134,60 @@ struct PlanningView: View {
             }
         }
     }
-    // Logic Helpers
+    
+    // ✨ LA SECTION "AUJOURD'HUI" ÉPINGLÉE ✨
+    var todaySection: some View {
+        Section(header: Text("Aujourd'hui")) {
+            if let todaySession = sessions.first(where: { calendar.isDateInToday($0.startTime) }) {
+                // Cas : Travail saisi
+                SessionRow(session: todaySession, language: selectedLanguage)
+                    .swipeActions(edge: .leading) {
+                        Button { sessionToEdit = todaySession } label: { Label("Modifier", systemImage: "pencil") }.tint(.orange)
+                    }
+            } else {
+                // Cas : Pas de travail (Le bouton gris)
+                HStack(spacing: 12) {
+                    Image(systemName: "moon.zzz.fill")
+                        .font(.title3)
+                        .foregroundStyle(.gray)
+                    
+                    Text("Pas d'heure de travail aujourd'hui")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    Spacer()
+                }
+                .padding(.vertical, 8)
+            }
+        }
+    }
+    
+    // --- NOUVEAUX HELPERS POUR LA LISTE COMPLÈTE ---
+    
+    // Récupère TOUS les jours du mois sélectionné (1..31), triés du plus récent au plus ancien
+    func getAllDaysInSelectedMonth() -> [Date] {
+        let components = DateComponents(year: selectedYear, month: selectedMonth, day: 1)
+        guard let startOfMonth = calendar.date(from: components),
+              let range = calendar.range(of: .day, in: .month, for: startOfMonth) else { return [] }
+        
+        let days = range.compactMap { day -> Date? in
+            return calendar.date(byAdding: .day, value: day - 1, to: startOfMonth)
+        }
+        
+        // Tri inversé (31, 30, ... 1) pour avoir les jours récents en haut
+        return days.sorted(by: { $0 > $1 })
+    }
+    
+    // Formate le titre de la section (ex: "Lundi 27 Janvier")
+    func formatDayTitle(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: selectedLanguage)
+        f.dateFormat = "EEEE d MMMM"
+        return f.string(from: date).capitalized
+    }
+    
+    // --- ANCIENS HELPERS ---
+    
     var firstSessionDate: Date { sessions.last?.startTime ?? Date() }
     var availableYears: [Int] {
         let startYear = calendar.component(.year, from: firstSessionDate); let currentYear = calendar.component(.year, from: Date())
@@ -136,20 +204,13 @@ struct PlanningView: View {
     }
     var filteredSessions: [WorkSession] { sessions.filter { let c = calendar.dateComponents([.year, .month], from: $0.startTime); return c.year == selectedYear && c.month == selectedMonth } }
     func totalHoursBadge(sessions: [WorkSession]) -> some View { HStack { Text("Total Mois :").foregroundStyle(.secondary); Text(calculateTotalHours(for: sessions)).bold().foregroundStyle(.primary) }.padding(.horizontal, 12).padding(.vertical, 6).background(Color(UIColor.systemGray5)).cornerRadius(20) }
-    
-    func monthName(_ month: Int) -> String {
-        let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage)
-        return f.monthSymbols[month - 1]
-    }
+    func monthName(_ month: Int) -> String { let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); return f.monthSymbols[month - 1] }
     func calculateTotalHours(for sessions: [WorkSession]) -> String {
-        let totalSeconds = sessions.reduce(0) { total, session in
-            guard let end = session.endTime else { return total }
-            return total + end.timeIntervalSince(session.startTime)
-        }
-        let hours = Int(totalSeconds) / 3600
-        let minutes = (Int(totalSeconds) % 3600) / 60
+        let totalSeconds = sessions.reduce(0) { total, session in guard let end = session.endTime else { return total }; return total + end.timeIntervalSince(session.startTime) }
+        let hours = Int(totalSeconds) / 3600; let minutes = (Int(totalSeconds) % 3600) / 60
         if minutes > 0 { return "\(hours)h\(minutes < 10 ? "0" : "")\(minutes)" } else { return "\(hours)h" }
     }
+    // Note: groupedSessionsByDay n'est plus utilisé dans la vue Liste principale, mais on le garde au cas où
     var groupedSessionsByDay: [(key: String, value: [WorkSession])] {
         let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "EEEE d MMMM"
         let grouped = Dictionary(grouping: filteredSessions) { f.string(from: $0.startTime) }
@@ -158,61 +219,83 @@ struct PlanningView: View {
     func deleteItems(offsets: IndexSet, in list: [WorkSession]) { withAnimation { for index in offsets { modelContext.delete(list[index]) } } }
 }
 
+// MARK: - SOUS-VUES (YearlySummary, SessionRow, MonthGridView...)
+// (Garde le reste du fichier identique à ce que je t'ai donné précédemment pour ces vues)
+
 struct YearlySummaryView: View {
     let year: Int; let sessions: [WorkSession]; let language: String
     let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
     var sessionsInYear: [WorkSession] { sessions.filter { Calendar.current.component(.year, from: $0.startTime) == year } }
-    var body: some View {
-        ScrollView { VStack(spacing: 20) { HStack { Text("Total \(String(year)) :").foregroundStyle(.secondary); Text(calculateTotalHours(for: sessionsInYear)).font(.title3).bold().foregroundStyle(.orange) }.padding().frame(maxWidth: .infinity).background(Color(UIColor.systemGray6)).cornerRadius(16).padding(.horizontal); LazyVGrid(columns: columns, spacing: 15) { ForEach(1...12, id: \.self) { month in monthCell(month: month) } }.padding(.horizontal) }.padding(.top) }
-    }
-    func monthCell(month: Int) -> some View {
-        let sessionsInMonth = sessionsInYear.filter { Calendar.current.component(.month, from: $0.startTime) == month }
-        let totalHours = calculateTotalHours(for: sessionsInMonth); let hasHours = !sessionsInMonth.isEmpty
-        let f = DateFormatter(); f.locale = Locale(identifier: language); let name = f.monthSymbols[month - 1]
-        return VStack(spacing: 5) { Text(name.prefix(3).capitalized).font(.caption).bold().foregroundStyle(.secondary); Text(totalHours).font(.headline).foregroundStyle(hasHours ? Color.primary : Color.gray.opacity(0.3)) }.frame(height: 80).frame(maxWidth: .infinity).background(hasHours ? Color.orange.opacity(0.1) : Color(UIColor.systemGray6)).overlay(RoundedRectangle(cornerRadius: 12).stroke(hasHours ? Color.orange : Color.clear, lineWidth: 1)).cornerRadius(12)
-    }
-    func calculateTotalHours(for sessions: [WorkSession]) -> String {
-        let totalSeconds = sessions.reduce(0) { total, session in guard let end = session.endTime else { return total }; return total + end.timeIntervalSince(session.startTime) }
-        let hours = Int(totalSeconds) / 3600; let minutes = (Int(totalSeconds) % 3600) / 60; if minutes > 0 { return "\(hours)h\(minutes < 10 ? "0" : "")\(minutes)" } else { return "\(hours)h" }
-    }
+    var body: some View { ScrollView { VStack(spacing: 20) { HStack { Text("Total \(String(year)) :").foregroundStyle(.secondary); Text(calculateTotalHours(for: sessionsInYear)).font(.title3).bold().foregroundStyle(.orange) }.padding().frame(maxWidth: .infinity).background(Color(UIColor.systemGray6)).cornerRadius(16).padding(.horizontal); LazyVGrid(columns: columns, spacing: 15) { ForEach(1...12, id: \.self) { month in monthCell(month: month) } }.padding(.horizontal) }.padding(.top) } }
+    func monthCell(month: Int) -> some View { let sessionsInMonth = sessionsInYear.filter { Calendar.current.component(.month, from: $0.startTime) == month }; let totalHours = calculateTotalHours(for: sessionsInMonth); let hasHours = !sessionsInMonth.isEmpty; let f = DateFormatter(); f.locale = Locale(identifier: language); let name = f.monthSymbols[month - 1]; return VStack(spacing: 5) { Text(name.prefix(3).capitalized).font(.caption).bold().foregroundStyle(.secondary); Text(totalHours).font(.headline).foregroundStyle(hasHours ? Color.primary : Color.gray.opacity(0.3)) }.frame(height: 80).frame(maxWidth: .infinity).background(hasHours ? Color.orange.opacity(0.1) : Color(UIColor.systemGray6)).overlay(RoundedRectangle(cornerRadius: 12).stroke(hasHours ? Color.orange : Color.clear, lineWidth: 1)).cornerRadius(12) }
+    func calculateTotalHours(for sessions: [WorkSession]) -> String { let totalSeconds = sessions.reduce(0) { total, session in guard let end = session.endTime else { return total }; return total + end.timeIntervalSince(session.startTime) }; let hours = Int(totalSeconds) / 3600; let minutes = (Int(totalSeconds) % 3600) / 60; if minutes > 0 { return "\(hours)h\(minutes < 10 ? "0" : "")\(minutes)" } else { return "\(hours)h" } }
 }
 
 struct SessionRow: View {
     let session: WorkSession; let language: String
     private var timeFormatter: DateFormatter { let f = DateFormatter(); f.locale = Locale(identifier: language); f.dateFormat = "HH:mm"; return f }
     private func formatDurationSimple(start: Date, end: Date) -> String { let diff = end.timeIntervalSince(start); let h = Int(diff) / 3600; let m = (Int(diff) % 3600) / 60; return "\(h)h \(m < 10 ? "0" : "")\(m)" }
+    var body: some View { HStack { VStack(alignment: .leading) { Text("\(timeFormatter.string(from: session.startTime)) - \(session.endTime != nil ? timeFormatter.string(from: session.endTime!) : "En cours")").font(.headline) }; Spacer(); if let end = session.endTime { Text(formatDurationSimple(start: session.startTime, end: end)).font(.subheadline).bold().foregroundStyle(.orange) } else { Text("En cours").font(.caption).foregroundStyle(.green) } }.padding(.vertical, 4) }
+}
+
+struct SessionDetailCard: View {
+    let date: Date; let session: WorkSession
     var body: some View {
-        HStack { VStack(alignment: .leading) { Text("\(timeFormatter.string(from: session.startTime)) - \(session.endTime != nil ? timeFormatter.string(from: session.endTime!) : "En cours")").font(.headline) }; Spacer(); if let end = session.endTime { Text(formatDurationSimple(start: session.startTime, end: end)).font(.subheadline).bold().foregroundStyle(.orange) } else { Text("En cours").font(.caption).foregroundStyle(.green) } }.padding(.vertical, 4)
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(date.formatted(date: .complete, time: .omitted).capitalized).font(.headline).foregroundStyle(.white)
+                Text(calculateDuration(session)).font(.subheadline).foregroundStyle(.orange)
+            }
+            Spacer()
+            HStack(spacing: 5) { Image(systemName: "clock.fill").foregroundStyle(.gray); Text("\(formatTime(session.startTime)) - \(session.endTime != nil ? formatTime(session.endTime!) : "...")").fontWeight(.bold).foregroundStyle(.white) }
+                .padding(.horizontal, 10).padding(.vertical, 6).background(Color.white.opacity(0.15)).cornerRadius(8)
+        }.padding().background(Color(UIColor.darkGray)).cornerRadius(12).shadow(radius: 5).padding(.horizontal).transition(.scale.combined(with: .opacity))
     }
+    func formatTime(_ date: Date) -> String { let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: date) }
+    func calculateDuration(_ session: WorkSession) -> String { guard let end = session.endTime else { return "En cours" }; let diff = end.timeIntervalSince(session.startTime); let h = Int(diff) / 3600; let m = (Int(diff) % 3600) / 60; return m > 0 ? "\(h)h\(m) de travail" : "\(h)h de travail" }
 }
 
 struct MonthGridView: View {
     let year: Int; let month: Int; let sessions: [WorkSession]; let language: String
-    var onSelectDay: (Date, WorkSession?) -> Void
+    var onEditSession: (WorkSession) -> Void
+    @State private var selectedSessionInfo: (Date, WorkSession)? = nil
+    @State private var showInfoOnTop: Bool = false
     let columns = Array(repeating: GridItem(.flexible()), count: 7)
     var calendar: Calendar { var c = Calendar.current; c.locale = Locale(identifier: language); return c }
     var daysOfWeek: [String] { let f = DateFormatter(); f.locale = Locale(identifier: language); let symbols = f.shortStandaloneWeekdaySymbols ?? []; guard !symbols.isEmpty else { return [] }; let firstDayIndex = calendar.firstWeekday - 1; let range = firstDayIndex..<symbols.count; return Array(symbols[range] + symbols[0..<firstDayIndex]) }
     var startOfMonth: Date { let components = DateComponents(year: year, month: month, day: 1); return calendar.date(from: components) ?? Date() }
     
     var body: some View {
-        VStack(spacing: 10) {
-            HStack { ForEach(daysOfWeek, id: \.self) { day in Text(day.prefix(1).uppercased()).font(.caption2).bold().foregroundStyle(.secondary).frame(maxWidth: .infinity) } }
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(0..<startingOffset, id: \.self) { _ in Rectangle().fill(Color.clear).frame(height: 35) }
-                ForEach(getDaysInMonth(date: startOfMonth), id: \.self) { dayDate in
-                    let workedSession = sessions.first { calendar.isDate($0.startTime, inSameDayAs: dayDate) }; let isToday = calendar.isDateInToday(dayDate)
-                    VStack(spacing: 4) {
-                        ZStack {
-                            if isToday { if workedSession != nil { Circle().stroke(Color.primary, lineWidth: 3).background(Circle().fill(Color.orange)) } else { Circle().fill(Color.primary) } } else { Circle().fill(workedSession != nil ? Color.orange : Color.gray.opacity(0.15)) }
-                            Text(dateFormatterDayNum.string(from: dayDate)).font(.caption).bold().foregroundStyle(isToday && workedSession == nil ? Color(UIColor.systemBackground) : (workedSession != nil ? Color.black : Color.primary))
-                        }.frame(width: 35, height: 35)
-                        if let session = workedSession, let end = session.endTime { let diff = end.timeIntervalSince(session.startTime) / 3600; Text(String(format: "%.1fh", diff)).font(.system(size: 8)).foregroundStyle(.secondary) } else { Text(" ").font(.system(size: 8)) }
+        VStack(spacing: 15) {
+            if let (date, session) = selectedSessionInfo, showInfoOnTop { SessionDetailCard(date: date, session: session) }
+            VStack(spacing: 10) {
+                HStack { ForEach(daysOfWeek, id: \.self) { day in Text(day.prefix(1).uppercased()).font(.caption2).bold().foregroundStyle(.secondary).frame(maxWidth: .infinity) } }
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(0..<startingOffset, id: \.self) { _ in Rectangle().fill(Color.clear).frame(height: 35) }
+                    let days = getDaysInMonth(date: startOfMonth)
+                    ForEach(Array(days.enumerated()), id: \.element) { index, dayDate in
+                        let workedSession = sessions.first { calendar.isDate($0.startTime, inSameDayAs: dayDate) }
+                        let isToday = calendar.isDateInToday(dayDate)
+                        let isSelected = selectedSessionInfo?.0 == dayDate
+                        VStack(spacing: 4) {
+                            ZStack {
+                                if isToday { if workedSession != nil { Circle().stroke(Color.primary, lineWidth: 3).background(Circle().fill(Color.orange)) } else { Circle().fill(Color.primary) } } else { if isSelected { Circle().fill(Color.orange.opacity(0.8)) } else { Circle().fill(workedSession != nil ? Color.orange : Color.gray.opacity(0.15)) } }
+                                Text(dateFormatterDayNum.string(from: dayDate)).font(.caption).bold().foregroundStyle((isToday || isSelected) && workedSession != nil ? .white : (isToday && workedSession == nil ? Color(UIColor.systemBackground) : (workedSession != nil ? Color.black : Color.primary)))
+                            }.frame(width: 35, height: 35)
+                            if let session = workedSession, let end = session.endTime { let diff = end.timeIntervalSince(session.startTime) / 3600; Text(String(format: "%.1fh", diff)).font(.system(size: 8)).foregroundStyle(.secondary) } else { Text(" ").font(.system(size: 8)) }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring()) {
+                                if selectedSessionInfo?.0 == dayDate { selectedSessionInfo = nil } else if let session = workedSession { selectedSessionInfo = (dayDate, session); let visualIndex = index + startingOffset; let row = visualIndex / 7; if row < 3 { showInfoOnTop = false } else { showInfoOnTop = true }; let generator = UIImpactFeedbackGenerator(style: .light); generator.impactOccurred() } else { selectedSessionInfo = nil }
+                            }
+                        }
+                        .onLongPressGesture { if let s = workedSession { onEditSession(s) } }
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture { onSelectDay(dayDate, workedSession) }
                 }
-            }
-        }.padding().background(Color(UIColor.systemGray6)).cornerRadius(16).padding(.horizontal)
+            }.padding().background(Color(UIColor.systemGray6)).cornerRadius(16).padding(.horizontal)
+            if let (date, session) = selectedSessionInfo, !showInfoOnTop { SessionDetailCard(date: date, session: session) }
+        }.onTapGesture { withAnimation { selectedSessionInfo = nil } }
     }
     var startingOffset: Int { let weekday = calendar.component(.weekday, from: startOfMonth); return (weekday - calendar.firstWeekday + 7) % 7 }
     func getDaysInMonth(date: Date) -> [Date] { guard let range = calendar.range(of: .day, in: .month, for: date) else { return [] }; return range.compactMap { d in calendar.date(byAdding: .day, value: d - 1, to: startOfMonth) } }
