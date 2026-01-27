@@ -79,6 +79,9 @@
         }
       }
     },
+    "%lld%%" : {
+
+    },
     "%lld%% Travail" : {
       "comment" : "A label showing the percentage of time spent working. The text inside the parentheses is a placeholder that will be replaced with the actual percentage.",
       "extractionState" : "stale",

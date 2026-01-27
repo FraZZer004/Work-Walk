@@ -48,76 +48,76 @@ struct TrophiesView: View {
     }
 }
 
-// ✨ NOUVELLE CARTE DESIGN AVEC BARRE DE PROGRESSION ✨
+// ✨ STYLE 2 : JAUGE TUBULAIRE ✨
 struct ActiveObjectiveCard: View {
     let category: TrophyCategory
     let trophy: Trophy
     
     var body: some View {
-        // Calcul du pourcentage (borné entre 0 et 1)
-        // Sécurité : si threshold est 0, on évite la division par zéro
-        let progressPercent = trophy.threshold > 0 ? min(max(trophy.progress / trophy.threshold, 0.0), 1.0) : 0.0
         let themeColor = category.themeColor
+        let progressPercent = trophy.threshold > 0 ? min(max(trophy.progress / trophy.threshold, 0.0), 1.0) : 0.0
         
-        VStack(spacing: 0) {
-            HStack(spacing: 15) {
+        VStack(spacing: 12) {
+            // En-tête texte
+            HStack {
+                Image(systemName: trophy.icon)
+                    .foregroundStyle(themeColor)
+                    .font(.title3)
                 
-                // 1. Grosse Icône colorée
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(themeColor.opacity(0.15))
-                        .frame(width: 60, height: 60)
-                    
-                    Image(systemName: trophy.icon)
-                        .font(.title)
-                        .foregroundStyle(themeColor)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(category.rawValue)
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text(trophy.title)
+                        .font(.headline).bold()
                 }
-                
-                // 2. Textes
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(category.rawValue.uppercased())
-                        .font(.caption2).fontWeight(.black)
-                        .foregroundStyle(themeColor.opacity(0.8))
-                    
-                    Text(trophy.isUnlocked ? "Niveau Max Atteint !" : trophy.title)
-                        // 👇 CORRECTION ICI AUSSI
-                        .font(.system(.title3, design: .rounded))
-                        .bold()
-                        .foregroundStyle(.primary)
-                    
-                    // "35 / 50 heures"
-                    if !trophy.isUnlocked {
-                        Text("\(Int(trophy.progress)) / \(Int(trophy.threshold))")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                
                 Spacer()
                 
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(.tertiary)
+                // Pourcentage texte
+                Text("\(Int(progressPercent * 100))%")
+                    .font(.title3).fontWeight(.black)
+                    .foregroundStyle(themeColor)
             }
-            .padding()
+            .padding(.horizontal, 5)
             
-            // 3. LA BARRE DE PROGRESSION
+            // La Grosse Jauge
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    // Fond de la barre
-                    Rectangle()
-                        .fill(themeColor.opacity(0.1))
+                    // Fond
+                    Capsule()
+                        .fill(Color(UIColor.secondarySystemBackground))
                     
                     // Remplissage
-                    Rectangle()
-                        .fill(themeColor)
-                        .frame(width: geo.size.width * progressPercent)
-                        .animation(.easeOut(duration: 1.0), value: progressPercent)
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [themeColor.opacity(0.7), themeColor],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(geo.size.width * progressPercent, 20)) // Minimum 20px pour voir la couleur
+                    
+                    // Texte à l'intérieur de la barre (valeurs)
+                    HStack {
+                        Text("\(Int(trophy.progress)) / \(Int(trophy.threshold))")
+                            .font(.caption).bold()
+                            .foregroundStyle(.white)
+                            .shadow(radius: 2)
+                            .padding(.leading, 10)
+                        Spacer()
+                    }
                 }
             }
-            .frame(height: 6) // Hauteur de la barre
+            .frame(height: 30) // Grosse barre épaisse
+            .clipShape(Capsule())
+            .shadow(color: themeColor.opacity(0.2), radius: 5, x: 0, y: 3)
         }
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: themeColor.opacity(0.15), radius: 8, x: 0, y: 4)
+        .padding()
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+        )
     }
 }

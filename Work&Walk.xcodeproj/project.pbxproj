@@ -10,9 +10,33 @@
 		854F1BD12F1C059000C69DDC /* Work&Walk.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Work&Walk.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		85E4A7F02F28054A001B09B8 /* Exceptions for "Work&Walk" folder in "Work&Walk" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ShareManager.swift,
+			);
+			target = 854F1BD02F1C059000C69DDC /* Work&Walk */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		85E4A7F12F28054A001B09B8 /* Exceptions for "Work&Walk" folder in "Copy Bundle Resources" phase from "Work&Walk" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 854F1BCF2F1C059000C69DDC /* Resources */;
+			membershipExceptions = (
+				ShareManager.swift,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		854F1BD32F1C059000C69DDC /* Work&Walk */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				85E4A7F02F28054A001B09B8 /* Exceptions for "Work&Walk" folder in "Work&Walk" target */,
+				85E4A7F12F28054A001B09B8 /* Exceptions for "Work&Walk" folder in "Copy Bundle Resources" phase from "Work&Walk" target */,
+			);
 			path = "Work&Walk";
 			sourceTree = "<group>";
 		};

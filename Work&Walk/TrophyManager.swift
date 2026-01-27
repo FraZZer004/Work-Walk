@@ -4,10 +4,10 @@ import Foundation
 // 1. Catégories réordonnées et recolorées en nuances d'orange
 enum TrophyCategory: String, CaseIterable {
     // L'ordre ici détermine l'ordre d'affichage dans l'écran Succès
-    case health = "Santé & Pas 👣"
-    case sessions = "Assiduité 🗓️"
-    case time = "Temps de Travail ⏳"
-    case money = "Fortune 💰"
+    case health = "Pas"
+    case sessions = "Assiduité"
+    case time = "Temps de Travail"
+    case money = "Fortune"
     
     // Une palette monochrome "Sunset" (Coucher de soleil)
     var themeColor: Color {
