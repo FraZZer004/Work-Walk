@@ -1,73 +1,73 @@
 import Foundation
 import HealthKit
-import Observation
+import Combine
 
-@Observable
-class HealthManager {
-    
-    var stepsToday: Double = 0.0
+class HealthManager: ObservableObject {
     let healthStore = HKHealthStore()
     
-    // On ajoute le rythme cardiaque à la liste
-    let typesToRead: Set = [
-        HKQuantityType.quantityType(forIdentifier: .stepCount)!,
-        HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
-        HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!,
-        HKQuantityType.quantityType(forIdentifier: .heartRate)!
-    ]
+    @Published var stepsToday: Double = 0
+    @Published var caloriesToday: Double = 0
+    @Published var distanceToday: Double = 0
+    @Published var flightsToday: Double = 0 // 👈 AJOUTÉ
     
     func requestAuthorization() {
-        guard HKHealthStore.isHealthDataAvailable() else { return }
+        // 👇 AJOUT DE .flightsClimbed DANS LES TYPES À LIRE
+        let typesToRead: Set<HKObjectType> = [
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .heartRate)!,
+            HKObjectType.quantityType(forIdentifier: .flightsClimbed)!
+        ]
+        
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
-            if success {
-                self.fetchTodaySteps()
-            }
+            if success { self.fetchTodayData() }
         }
     }
     
-    func fetchTodaySteps() {
-        fetchQuantity(type: .stepCount, start: Calendar.current.startOfDay(for: Date()), end: Date()) { count in
-            self.stepsToday = count
-        }
+    func fetchTodayData() {
+        let now = Date()
+        let startOfDay = Calendar.current.startOfDay(for: now)
+        
+        fetchQuantity(type: .stepCount, start: startOfDay, end: now) { count in DispatchQueue.main.async { self.stepsToday = count } }
+        fetchQuantity(type: .activeEnergyBurned, start: startOfDay, end: now) { count in DispatchQueue.main.async { self.caloriesToday = count } }
+        fetchQuantity(type: .distanceWalkingRunning, start: startOfDay, end: now) { count in DispatchQueue.main.async { self.distanceToday = count } }
+        // 👇 AJOUT RÉCUPÉRATION ÉTAGES AUJOURD'HUI
+        fetchQuantity(type: .flightsClimbed, start: startOfDay, end: now) { count in DispatchQueue.main.async { self.flightsToday = count } }
     }
     
-    // --- LA FONCTION UNIVERSELLE (Pas, Cal, Dist, Cœur) ---
+    // Fonction générique modifiée pour gérer les étages
     func fetchQuantity(type: HKQuantityTypeIdentifier, start: Date, end: Date, completion: @escaping (Double) -> Void) {
         guard let quantityType = HKQuantityType.quantityType(forIdentifier: type) else { return }
         
-        // Si c'est le coeur, on veut la MOYENNE. Sinon (Pas, Cal...), on veut la SOMME.
-        let options: HKStatisticsOptions = (type == .heartRate) ? .discreteAverage : .cumulativeSum
-        
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
-        
-        let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: options) { _, result, error in
+        let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+            guard let result = result, let sum = result.sumQuantity() else { completion(0); return }
             
-            var value: Double = 0
-            
-            if let stats = result {
-                if type == .heartRate {
-                    // Pour le coeur : Moyenne
-                    if let avg = stats.averageQuantity() {
-                        value = avg.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
-                    }
-                } else {
-                    // Pour le reste : Somme
-                    if let sum = stats.sumQuantity() {
-                        if type == .stepCount {
-                            value = sum.doubleValue(for: HKUnit.count())
-                        } else if type == .activeEnergyBurned {
-                            value = sum.doubleValue(for: HKUnit.kilocalorie())
-                        } else if type == .distanceWalkingRunning {
-                            value = sum.doubleValue(for: HKUnit.meter()) / 1000 // Km
-                        }
-                    }
-                }
-            }
-            
-            DispatchQueue.main.async {
-                completion(value)
+            // 👇 GESTION DES UNITÉS
+            if type == .distanceWalkingRunning {
+                completion(sum.doubleValue(for: HKUnit.meter()) / 1000.0) // km
+            } else if type == .activeEnergyBurned {
+                completion(sum.doubleValue(for: HKUnit.kilocalorie())) // kcal
+            } else if type == .heartRate {
+                // Pour le coeur c'est une moyenne, pas une somme, mais ta fonction gère des sommes.
+                // On simplifie ici pour l'instant.
+                completion(sum.doubleValue(for: HKUnit.count().unitDivided(by: .minute())))
+            } else {
+                // Pas et Étages = Count
+                completion(sum.doubleValue(for: HKUnit.count()))
             }
         }
-        healthStore.execute(query)
+        
+        // Pour le coeur, on utilise une requête différente (moyenne)
+        if type == .heartRate {
+            let heartQuery = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, _ in
+                guard let result = result, let avg = result.averageQuantity() else { completion(0); return }
+                completion(avg.doubleValue(for: HKUnit.count().unitDivided(by: .minute())))
+            }
+            healthStore.execute(heartQuery)
+        } else {
+            healthStore.execute(query)
+        }
     }
 }
