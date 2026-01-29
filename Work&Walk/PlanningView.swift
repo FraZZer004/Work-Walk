@@ -92,6 +92,15 @@ struct PlanningView: View {
                                                 .swipeActions(edge: .leading) {
                                                     Button { sessionToEdit = session } label: { Label("Modifier", systemImage: "pencil") }.tint(.orange)
                                                 }
+                                                // 👇 LE BLOC MANQUANT EST À AJOUTER ICI :
+                                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                                    Button(role: .destructive) {
+                                                        modelContext.delete(session)
+                                                    } label: {
+                                                        Label("Supprimer", systemImage: "trash")
+                                                    }
+                                                    .tint(.red)
+                                                }
                                         } else {
                                             // Jour Repos / Vide
                                             HStack {
@@ -144,6 +153,15 @@ struct PlanningView: View {
                     .swipeActions(edge: .leading) {
                         Button { sessionToEdit = todaySession } label: { Label("Modifier", systemImage: "pencil") }.tint(.orange)
                     }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                // Supprime la session du contexte SwiftData
+                                modelContext.delete(todaySession)
+                            } label: {
+                                Label("Supprimer", systemImage: "trash")
+                            }
+                            .tint(.red)
+                        }
             } else {
                 // Cas : Pas de travail (Le bouton gris)
                 HStack(spacing: 12) {

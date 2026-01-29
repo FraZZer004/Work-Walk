@@ -7,17 +7,35 @@
 		<key>Work&amp;Walk.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>0</integer>
+			<integer>2</integer>
 		</dict>
 		<key>WorkWalkWatch Watch App.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>2</integer>
+			<integer>1</integer>
 		</dict>
 		<key>WorkWalkWidgetExtension.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>1</integer>
+			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>854F1BD02F1C059000C69DDC</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>85E4A8052F295297001B09B8</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>85FE7AD12F2B71C300DEC4BF</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

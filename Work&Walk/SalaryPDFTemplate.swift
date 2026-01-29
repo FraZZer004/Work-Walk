@@ -42,14 +42,14 @@ struct SalaryPDFTemplate: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Employé :"))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.black.opacity(0.6))
                     Text(userName)
                         .font(.headline)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(LocalizedStringKey("Date d'émission :"))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.black.opacity(0.6))
                     Text(Date().formatted(date: .numeric, time: .omitted))
                         .font(.body)
                 }
@@ -116,9 +116,10 @@ struct SalaryPDFTemplate: View {
                 .padding(.bottom, 20)
         }
         .padding(40)
-        .frame(width: 595, height: 842)
-        .background(.white)
-        .foregroundStyle(.black)
+                .frame(width: 595, height: 842)
+                .background(.white)        // Fond papier blanc
+                .foregroundStyle(.black)   // Texte principal noir
+                .environment(\.colorScheme, .light)
     }
     
     // Helper modifié pour accepter la traduction

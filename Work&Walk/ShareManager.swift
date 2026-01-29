@@ -41,8 +41,11 @@ struct DailyReceiptView: View {
             
             // --- EN-TÊTE ---
             VStack(spacing: 5) {
-                Image(systemName: "figure.walk.circle.fill") // Ou ton Logo "AppLogo"
-                    .font(.system(size: 40))
+                // Remplace "AppLogo" par ton image ou systemName si besoin
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
                     .foregroundStyle(.black)
                 
                 Text("WORK & WALK")
@@ -115,6 +118,10 @@ struct DailyReceiptView: View {
         .clipShape(TicketShape()) // La découpe magique
         .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
         .frame(width: 320) // Largeur fixe pour l'export Instagram (taille Story idéale)
+        
+        // 👇 C'EST ICI QUE LA MAGIE OPÈRE POUR LE MODE SOMBRE 👇
+        .foregroundStyle(.black)            // Force tout le texte en NOIR (encre)
+        .environment(\.colorScheme, .light) // Force le ticket à rester en mode "Jour" (pour les gris)
     }
 }
 
@@ -135,7 +142,7 @@ struct ReceiptRow: View {
             Text(value).fontWeight(.bold)
         }
         .font(.system(.caption, design: .monospaced))
-        .foregroundStyle(.black)
+        // Le foregroundStyle(.black) du parent s'appliquera ici aussi
     }
 }
 
@@ -209,9 +216,8 @@ struct ShareReceiptSheet: View {
     func renderImage(view: DailyReceiptView) -> Image {
         let renderer = ImageRenderer(content: view)
         renderer.scale = 3.0 // Haute qualité
-        if let uiImage = renderer.uiImage {
-            return Image(uiImage: uiImage)
-        }
-        return Image(systemName: "photo")
+        
+        // Important pour le rendu image aussi !
+        return Image(uiImage: renderer.uiImage ?? UIImage())
     }
 }
