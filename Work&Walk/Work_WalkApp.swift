@@ -7,10 +7,16 @@ struct Work_WalkApp: App {
     @AppStorage("hasFinishedOnboarding") var hasFinishedOnboarding: Bool = false
     @AppStorage("selectedAppearance") private var selectedAppearance: Int = 0
     
-    // 👇 CHANGEMENT DE LOGIQUE :
-    // On utilise une variable "isSplashFinished" initialisée à 'false'.
-    // Quand l'animation Zoom sera terminée, elle passera à 'true'.
+    // Logique du Splash Screen
     @State private var isSplashFinished = false
+    
+    // 👇 ÉTAPE 3 : ON AJOUTE L'INITIALISATION ICI
+    // Le init() est appelé dès que l'application se lance en mémoire.
+    // C'est le moment parfait pour dire à HealthKit de nous surveiller.
+    init() {
+        HealthManager.shared.startBackgroundObserver()
+        print("🚀 Application lancée : Observateur HealthKit démarré")
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -24,11 +30,9 @@ struct Work_WalkApp: App {
                     }
                 }
                 
-                // 2. LE NOUVEAU SPLASH SCREEN
-                // On l'affiche tant que l'animation n'est PAS finie (!isSplashFinished)
+                // 2. LE SPLASH SCREEN
+                // On l'affiche tant que l'animation n'est PAS finie
                 if !isSplashFinished {
-                    // On appelle la vue SplashView qu'on vient de créer
-                    // On lui passe la liaison ($) pour qu'elle puisse dire "C'est fini !"
                     SplashView(isFinished: $isSplashFinished)
                         .transition(.opacity) // Disparition douce
                         .zIndex(1) // Toujours au premier plan
@@ -36,9 +40,6 @@ struct Work_WalkApp: App {
             }
             // Application du thème global
             .preferredColorScheme(selectedAppearance == 1 ? .light : (selectedAppearance == 2 ? .dark : nil))
-            
-            // ⚠️ NOTE : J'ai supprimé le bloc .onAppear ici.
-            // C'est maintenant le fichier SplashView.swift qui gère le timing (0.8s) et l'animation.
         }
         .modelContainer(for: WorkSession.self)
     }

@@ -3,6 +3,7 @@ import HealthKit
 import Combine
 
 class HealthManager: ObservableObject {
+    static let shared = HealthManager()
     let healthStore = HKHealthStore()
     
     @Published var stepsToday: Double = 0
@@ -70,4 +71,65 @@ class HealthManager: ObservableObject {
             healthStore.execute(query)
         }
     }
+    
+    // 1. Fonction à lancer au démarrage de l'app
+    func startBackgroundObserver() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        
+        let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        
+        // Active la mise à jour en arrière-plan
+        healthStore.enableBackgroundDelivery(for: stepType, frequency: .immediate) { success, error in
+            if success { print("✅ Background Delivery activé") }
+        }
+        
+        // L'observateur qui réveille l'app quand les pas changent
+        let query = HKObserverQuery(sampleType: stepType, predicate: nil) { [weak self] _, _, error in
+            guard error == nil else { return }
+            
+            // ⚠️ IMPORTANT : On est en arrière-plan, on recalcule et on sauvegarde
+            print("🔄 Mouvement détecté en arrière-plan !")
+            self?.fetchTodayStepsAndRefreshWidget()
+        }
+        
+        healthStore.execute(query)
+    }
+    
+    // 2. Fonction qui calcule et sauvegarde
+    // Dans HealthManager.swift
+
+        func fetchTodayStepsAndRefreshWidget() {
+            let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+            // On garde ta logique de pas qui fonctionne
+            let predicate = HKQuery.predicateForSamples(withStart: Calendar.current.startOfDay(for: Date()), end: Date(), options: .strictStartDate)
+            
+            let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+                guard let result = result, let sum = result.sumQuantity() else { return }
+                
+                // 1. Les Pas (On garde ça, c'est le background qui marche)
+                let totalStepsToday = sum.doubleValue(for: HKUnit.count())
+                let estimatedCalories = totalStepsToday * 0.04
+                
+                // 2. Le Salaire & Heures (C'EST ICI QU'ON CHANGE)
+                // On ne calcule PLUS rien basé sur les pas.
+                // On lit juste la valeur "fixe" sauvegardée par ta vue Salaire.
+                // Si tu n'as rien saisi, par défaut ce sera 0.
+                let savedSalary = UserDefaults.standard.double(forKey: "manual_today_salary")
+                let savedHours = UserDefaults.standard.string(forKey: "manual_today_hours") ?? "0h"
+                
+                // 3. On envoie au Widget
+                DispatchQueue.main.async {
+                    #if os(iOS)
+                    WidgetDataManager.save(
+                        steps: totalStepsToday, // Les pas bougent tout seuls (c'est ce qu'on veut)
+                        hours: savedHours,      // Les heures restent fixes (selon ta saisie)
+                        calories: estimatedCalories,
+                        salary: savedSalary     // Le salaire reste fixe (selon ta saisie)
+                    )
+                    #endif
+                }
+            }
+            
+            healthStore.execute(query)
+        }
 }

@@ -191,6 +191,13 @@ struct SalaryView: View {
                 .onTapGesture {
                     isInputFocused = false
                 }
+                // À la fin de ton ScrollView ou VStack
+                .onAppear {
+                    updateWidgetData()
+                }
+                .onChange(of: sessions) { _, _ in
+                    updateWidgetData()
+                }
             }
             .navigationTitle("Mon Salaire")
             .scrollDismissesKeyboard(.interactively) // Glisser pour fermer
@@ -273,6 +280,28 @@ struct SalaryView: View {
         f.dateFormat = "MMMM yyyy"
         return f
     }
+    
+    // À ajouter dans SalaryView.swift
+
+        // 1. La fonction qui calcule le total d'aujourd'hui
+        func updateWidgetData() {
+            // On filtre les sessions d'aujourd'hui seulement
+            let today = Date()
+            let calendar = Calendar.current
+            let todaysSessions = sessions.filter { calendar.isDate($0.startTime, inSameDayAs: today) }
+            
+            // On calcule le total
+            let totalSeconds = todaysSessions.reduce(0) { $0 + ($1.endTime?.timeIntervalSince($1.startTime) ?? 0) }
+            let totalHours = totalSeconds / 3600.0
+            let totalSalary = totalHours * hourlyRate
+            
+            // On sauvegarde pour le HealthManager
+            UserDefaults.standard.set(totalSalary, forKey: "manual_today_salary")
+            UserDefaults.standard.set(formatHours(totalHours), forKey: "manual_today_hours")
+            
+            // On force le rafraîchissement immédiat
+            HealthManager.shared.fetchTodayStepsAndRefreshWidget()
+        }
 }
 
 // --- SOUS-VUES ---

@@ -94,13 +94,16 @@ struct DashboardView: View {
     var updateButtonView: some View {
         Button(action: {
             let generator = UIImpactFeedbackGenerator(style: .medium); generator.impactOccurred()
+            
+            // Tes fonctions existantes
             calculateWeeklyStats()
             syncStepsForAllSessions()
-            WidgetDataManager.save(
-                    steps: healthManager.stepsToday,
-                    hours: calculateTodayWorkHours(),
-                    calories: healthManager.caloriesToday
-                )
+            
+            // 👇 LA CORRECTION EST ICI 👇
+            // On supprime le bloc 'WidgetDataManager.save(...)' qui plante.
+            // On le remplace par l'appel unique au chef d'orchestre :
+            HealthManager.shared.fetchTodayStepsAndRefreshWidget()
+            
         }) {
             HStack(spacing: 10) {
                 Image(systemName: "arrow.triangle.2.circlepath").font(.title3).fontWeight(.bold)

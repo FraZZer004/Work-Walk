@@ -65,6 +65,20 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		851DA9332F3282A000C241F4 /* Exceptions for "WorkWalkWatch Watch App" folder in "WorkWalkWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"WorkWalkWatch-Watch-App-Info.plist",
+			);
+			target = 85FE7AD12F2B71C300DEC4BF /* WorkWalkWatch Watch App */;
+		};
+		851DA9352F32834500C241F4 /* Exceptions for "Work&Walk" folder in "Work&Walk" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Untitled.swift,
+			);
+			target = 854F1BD02F1C059000C69DDC /* Work&Walk */;
+		};
 		85E4A81E2F295298001B09B8 /* Exceptions for "WorkWalkWidget" folder in "WorkWalkWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -94,6 +108,7 @@
 				TrophiesView.swift,
 				TrophyDetailView.swift,
 				TrophyManager.swift,
+				Untitled.swift,
 				Work_WalkApp.swift,
 			);
 			target = 85E4A8052F295297001B09B8 /* WorkWalkWidgetExtension */;
@@ -112,6 +127,7 @@
 		854F1BD32F1C059000C69DDC /* Work&Walk */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				851DA9352F32834500C241F4 /* Exceptions for "Work&Walk" folder in "Work&Walk" target */,
 				85E4A8412F2A0752001B09B8 /* Exceptions for "Work&Walk" folder in "WorkWalkWidgetExtension" target */,
 				85FE7AE22F2B721500DEC4BF /* Exceptions for "Work&Walk" folder in "WorkWalkWatch Watch App" target */,
 			);
@@ -129,6 +145,9 @@
 		};
 		85FE7AD32F2B71C300DEC4BF /* WorkWalkWatch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				851DA9332F3282A000C241F4 /* Exceptions for "WorkWalkWatch Watch App" folder in "WorkWalkWatch Watch App" target */,
+			);
 			path = "WorkWalkWatch Watch App";
 			sourceTree = "<group>";
 		};
@@ -505,6 +524,7 @@
 				DEVELOPMENT_TEAM = 3UA2286B3F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Work-Walk-Info.plist";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "J'ai besoin de lire tes données pour les comparer à tes horaires.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "J'ai besoin d'écrire des données.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -540,6 +560,7 @@
 				DEVELOPMENT_TEAM = 3UA2286B3F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Work-Walk-Info.plist";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "J'ai besoin de lire tes données pour les comparer à tes horaires.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "J'ai besoin d'écrire des données.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -636,6 +657,7 @@
 				DEVELOPMENT_TEAM = 3UA2286B3F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "WorkWalkWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkWalkWatch;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Pour compter vos pas pendant le travail.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Pour sauvegarder vos sessions.";
@@ -671,6 +693,7 @@
 				DEVELOPMENT_TEAM = 3UA2286B3F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "WorkWalkWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkWalkWatch;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Pour compter vos pas pendant le travail.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Pour sauvegarder vos sessions.";

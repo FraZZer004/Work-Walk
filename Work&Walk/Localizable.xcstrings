@@ -1564,7 +1564,11 @@
         }
       }
     },
+    "Pour gérer l'accès Santé, allez dans Réglages > Apps > Santé > Accès aux données et appareils > Work&Walk." : {
+
+    },
     "Pour gérer l'accès Santé, allez dans Réglages > Santé > Work&Walk." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
