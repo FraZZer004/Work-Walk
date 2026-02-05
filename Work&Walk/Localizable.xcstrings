@@ -167,6 +167,9 @@
         }
       }
     },
+    "📅 Demain au boulot !" : {
+
+    },
     "€" : {
       "comment" : "The currency symbol.",
       "extractionState" : "stale",
@@ -1014,6 +1017,9 @@
         }
       }
     },
+    "Heure du rappel (veille)" : {
+
+    },
     "heures" : {
       "localizations" : {
         "en" : {
@@ -1058,6 +1064,9 @@
           }
         }
       }
+    },
+    "Horaires prévus : %@" : {
+
     },
     "Informations Légales" : {
       "localizations" : {

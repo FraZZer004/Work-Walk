@@ -167,4 +167,13 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound])
     }
-}
+    
+    // À ajouter tout en bas de NotificationManager.swift
+        
+        // Fonction pour annuler toutes les notifications (utilisée par les Réglages)
+        func cancelAll() {
+            UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+            print("🛑 Toutes les notifications futures ont été annulées.")
+        }
+} // Fin de la classe
+

@@ -98,38 +98,49 @@ class HealthManager: ObservableObject {
     // 2. Fonction qui calcule et sauvegarde
     // Dans HealthManager.swift
 
+    // Dans HealthManager.swift - Remplace la fonction fetchTodayStepsAndRefreshWidget
+
         func fetchTodayStepsAndRefreshWidget() {
             let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
-            // On garde ta logique de pas qui fonctionne
             let predicate = HKQuery.predicateForSamples(withStart: Calendar.current.startOfDay(for: Date()), end: Date(), options: .strictStartDate)
             
             let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
                 guard let result = result, let sum = result.sumQuantity() else { return }
                 
-                // 1. Les Pas (On garde ça, c'est le background qui marche)
+                // 1. Les Pas (Ça, c'est du temps réel)
                 let totalStepsToday = sum.doubleValue(for: HKUnit.count())
                 let estimatedCalories = totalStepsToday * 0.04
                 
-                // 2. Le Salaire & Heures (C'EST ICI QU'ON CHANGE)
-                // On ne calcule PLUS rien basé sur les pas.
-                // On lit juste la valeur "fixe" sauvegardée par ta vue Salaire.
-                // Si tu n'as rien saisi, par défaut ce sera 0.
-                let savedSalary = UserDefaults.standard.double(forKey: "manual_today_salary")
-                let savedHours = UserDefaults.standard.string(forKey: "manual_today_hours") ?? "0h"
+                // 2. RECUPERATION DES HEURES SAISIES (Mémoire Tampon)
+                let savedDate = UserDefaults.standard.object(forKey: "manual_today_date") as? Date ?? Date.distantPast
+                let calendar = Calendar.current
                 
-                // 3. On envoie au Widget
+                var salaryToSend: Double = 0.0
+                var hoursToSend: String = "0h"
+                
+                // On vérifie si les heures sauvegardées datent bien d'AUJOURD'HUI
+                if calendar.isDateInToday(savedDate) {
+                    salaryToSend = UserDefaults.standard.double(forKey: "manual_today_salary")
+                    hoursToSend = UserDefaults.standard.string(forKey: "manual_today_hours") ?? "0h"
+                }
+                // Sinon (si ça date d'hier), on envoie 0 (reset automatique)
+                
+                // 3. Mise à jour
                 DispatchQueue.main.async {
+                    // Mise à jour de l'UI interne (si l'app est ouverte)
+                    // self.stepsToday = Int(totalStepsToday)
+                    
                     #if os(iOS)
+                    // Mise à jour du Widget
                     WidgetDataManager.save(
-                        steps: totalStepsToday, // Les pas bougent tout seuls (c'est ce qu'on veut)
-                        hours: savedHours,      // Les heures restent fixes (selon ta saisie)
+                        steps: totalStepsToday,
+                        hours: hoursToSend,     // On garde les heures saisies
                         calories: estimatedCalories,
-                        salary: savedSalary     // Le salaire reste fixe (selon ta saisie)
+                        salary: salaryToSend    // On garde le salaire saisi
                     )
                     #endif
                 }
             }
-            
             healthStore.execute(query)
         }
 }
