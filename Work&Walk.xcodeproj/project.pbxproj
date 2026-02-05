@@ -65,13 +65,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		851DA9332F3282A000C241F4 /* Exceptions for "WorkWalkWatch Watch App" folder in "WorkWalkWatch Watch App" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"WorkWalkWatch-Watch-App-Info.plist",
-			);
-			target = 85FE7AD12F2B71C300DEC4BF /* WorkWalkWatch Watch App */;
-		};
 		851DA9352F32834500C241F4 /* Exceptions for "Work&Walk" folder in "Work&Walk" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -100,6 +93,7 @@
 				ContentView.swift,
 				DashboardView.swift,
 				HealthManager.swift,
+				HealthProfileView.swift,
 				OnboardingView.swift,
 				PlanningView.swift,
 				SalaryView.swift,
@@ -145,9 +139,6 @@
 		};
 		85FE7AD32F2B71C300DEC4BF /* WorkWalkWatch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				851DA9332F3282A000C241F4 /* Exceptions for "WorkWalkWatch Watch App" folder in "WorkWalkWatch Watch App" target */,
-			);
 			path = "WorkWalkWatch Watch App";
 			sourceTree = "<group>";
 		};

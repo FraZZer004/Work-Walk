@@ -96,47 +96,47 @@ class HealthManager: ObservableObject {
     }
     
     // 2. Fonction qui calcule et sauvegarde
-    // Dans HealthManager.swift
-
-    // Dans HealthManager.swift - Remplace la fonction fetchTodayStepsAndRefreshWidget
-
-        func fetchTodayStepsAndRefreshWidget() {
+    func fetchTodayStepsAndRefreshWidget() {
             let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
             let predicate = HKQuery.predicateForSamples(withStart: Calendar.current.startOfDay(for: Date()), end: Date(), options: .strictStartDate)
             
             let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
                 guard let result = result, let sum = result.sumQuantity() else { return }
                 
-                // 1. Les Pas (Ça, c'est du temps réel)
+                // 1. Les Pas
                 let totalStepsToday = sum.doubleValue(for: HKUnit.count())
-                let estimatedCalories = totalStepsToday * 0.04
                 
-                // 2. RECUPERATION DES HEURES SAISIES (Mémoire Tampon)
+                // 👇 CALCUL CALORIES PERSONNALISÉ 👇
+                // On récupère le poids (ou 70kg par défaut)
+                let userWeight = UserDefaults.standard.double(forKey: "userWeight")
+                let weight = userWeight > 0 ? userWeight : 70.0
+                
+                // Formule adaptée : (Poids / 70) * 0.04 * Pas
+                let caloriesFactor = (weight / 70.0) * 0.04
+                let estimatedCalories = totalStepsToday * caloriesFactor
+                
+                // 2. Récupération des données manuelles (Salaire/Heures)
                 let savedDate = UserDefaults.standard.object(forKey: "manual_today_date") as? Date ?? Date.distantPast
                 let calendar = Calendar.current
                 
                 var salaryToSend: Double = 0.0
                 var hoursToSend: String = "0h"
                 
-                // On vérifie si les heures sauvegardées datent bien d'AUJOURD'HUI
                 if calendar.isDateInToday(savedDate) {
                     salaryToSend = UserDefaults.standard.double(forKey: "manual_today_salary")
                     hoursToSend = UserDefaults.standard.string(forKey: "manual_today_hours") ?? "0h"
                 }
-                // Sinon (si ça date d'hier), on envoie 0 (reset automatique)
                 
                 // 3. Mise à jour
                 DispatchQueue.main.async {
-                    // Mise à jour de l'UI interne (si l'app est ouverte)
-                    // self.stepsToday = Int(totalStepsToday)
+                    // self.stepsToday = Int(totalStepsToday) // Si tu as cette variable dans ton Manager
                     
                     #if os(iOS)
-                    // Mise à jour du Widget
                     WidgetDataManager.save(
                         steps: totalStepsToday,
-                        hours: hoursToSend,     // On garde les heures saisies
-                        calories: estimatedCalories,
-                        salary: salaryToSend    // On garde le salaire saisi
+                        hours: hoursToSend,
+                        calories: estimatedCalories, // Envoie les calories précises
+                        salary: salaryToSend
                     )
                     #endif
                 }

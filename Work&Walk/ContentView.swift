@@ -24,6 +24,9 @@ struct ContentView: View {
             
             SalaryView()
                 .tabItem { Label("Salaire", systemImage: "eurosign.circle.fill") }.tag(3)
+            
+            HealthProfileView()
+                            .tabItem { Label("Profil", systemImage: "person.crop.circle") }.tag(4)
         }
         .tint(.orange)
         .preferredColorScheme(selectedAppearance == 1 ? .light : (selectedAppearance == 2 ? .dark : nil))
@@ -50,43 +53,42 @@ struct ContentView: View {
     
     // 2. SYNCHRONISATION DU WIDGET (La fonction magique)
     func syncWidgetWithApp() {
-        let calendar = Calendar.current
-        let today = Date()
-        
-        // A. On ne prend QUE les sessions d'aujourd'hui
-        let todaysSessions = sessions.filter { calendar.isDate($0.startTime, inSameDayAs: today) }
-        
-        // B. Calcul des Heures
-        let totalSeconds = todaysSessions.reduce(0) { $0 + ($1.endTime?.timeIntervalSince($1.startTime) ?? 0) }
-        let totalHours = totalSeconds / 3600.0
-        
-        // C. Calcul du Salaire (On récupère le taux depuis les réglages)
-        let hourlyRate = UserDefaults.standard.double(forKey: "hourlyRate")
-        let rateToUse = hourlyRate > 0 ? hourlyRate : 11.91
-        let calculatedSalary = totalHours * rateToUse
-        
-        // Formatage "0h" ou "5.5h"
-        let hoursString = totalSeconds > 0 ? String(format: "%.1fh", totalHours) : "0h"
-        
-        // D. On récupère les pas actuels (via HealthManager) pour ne pas afficher 0 pas
-        // Si HealthManager n'est pas accessible ici, on met 0, le background corrigera les pas plus tard.
-        let currentSteps = HealthManager.shared.stepsToday
-        let calories = Double(currentSteps) * 0.04
-        
-        print("🔄 APP -> WIDGET : Envoi de \(hoursString) / \(calculatedSalary)€")
-        
-        // E. On sauvegarde DIRECTEMENT dans le Widget (Mise à jour visuelle immédiate)
-        WidgetDataManager.save(
-            steps: Double(currentSteps),
-            hours: hoursString,
-            calories: calories,
-            salary: calculatedSalary
-        )
-        
-        // F. On sauvegarde dans la MÉMOIRE TAMPON (Pour le Background HealthKit)
-        // Comme ça, quand l'iPhone est verrouillé, HealthManager saura qu'il doit réafficher ces heures-là.
-        UserDefaults.standard.set(calculatedSalary, forKey: "manual_today_salary")
-        UserDefaults.standard.set(hoursString, forKey: "manual_today_hours")
-        UserDefaults.standard.set(Date(), forKey: "manual_today_date") // La date sert à vérifier si c'est périmé demain
-    }
+            let calendar = Calendar.current
+            let today = Date()
+            
+            let todaysSessions = sessions.filter { calendar.isDate($0.startTime, inSameDayAs: today) }
+            
+            let totalSeconds = todaysSessions.reduce(0) { $0 + ($1.endTime?.timeIntervalSince($1.startTime) ?? 0) }
+            let totalHours = totalSeconds / 3600.0
+            
+            let hourlyRate = UserDefaults.standard.double(forKey: "hourlyRate")
+            let rateToUse = hourlyRate > 0 ? hourlyRate : 11.91
+            let calculatedSalary = totalHours * rateToUse
+            
+            let hoursString = totalSeconds > 0 ? String(format: "%.1fh", totalHours) : "0h"
+            
+            // On récupère les pas actuels
+            let currentSteps = HealthManager.shared.stepsToday
+            
+            // 👇 CALCUL CALORIES PERSONNALISÉ ICI AUSSI 👇
+            let userWeight = UserDefaults.standard.double(forKey: "userWeight")
+            let weight = userWeight > 0 ? userWeight : 70.0
+            
+            // Formule : Si tu fais 100kg, tu brûles 1.4x plus qu'une personne de 70kg
+            let caloriesFactor = (weight / 70.0) * 0.04
+            let calories = Double(currentSteps) * caloriesFactor
+            
+            print("🔄 APP -> WIDGET : \(calories) kcal (Poids: \(weight)kg)")
+            
+            WidgetDataManager.save(
+                steps: Double(currentSteps),
+                hours: hoursString,
+                calories: calories,
+                salary: calculatedSalary
+            )
+            
+            UserDefaults.standard.set(calculatedSalary, forKey: "manual_today_salary")
+            UserDefaults.standard.set(hoursString, forKey: "manual_today_hours")
+            UserDefaults.standard.set(Date(), forKey: "manual_today_date")
+        }
 }
