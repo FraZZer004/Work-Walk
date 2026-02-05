@@ -56,19 +56,28 @@ class TrophyManager {
             total += duration
         } / 3600.0
         
-        // Calcul réel des pas (basé sur ton modèle mis à jour)
+        // Calcul réel des pas
         let totalSteps = sessions.reduce(into: 0.0) { total, session in
             total += session.steps
         }
         
-        // (Calcul du salaire si dispo, sinon 0)
-        let totalEarnings = 0.0
+        // 👇 CORRECTION MAJEURE ICI : CALCUL DU SALAIRE NET À VIE
+        // On récupère les réglages de l'utilisateur (ou valeurs par défaut)
+        let hourlyRate = UserDefaults.standard.double(forKey: "hourlyRate")
+        let taxRate = UserDefaults.standard.double(forKey: "taxRate")
+        
+        let safeHourlyRate = hourlyRate > 0 ? hourlyRate : 11.91
+        let safeTaxRate = taxRate > 0 ? taxRate : 23.05
+        
+        // Calcul : (Total Heures * Taux) - Charges
+        let grossEarnings = totalHours * safeHourlyRate
+        let totalEarnings = grossEarnings * (1 - (safeTaxRate / 100))
         
         var allTrophies: [Trophy] = []
         
         // --- B. DÉFINITION DES TROPHÉES ---
         
-        // 1. SANTÉ & PAS (Désormais en premier) 👣
+        // 1. SANTÉ & PAS 👣
         let stepsData = [
             (50_000, "Échauffement"),
             (100_000, "Randonneur"),
@@ -131,7 +140,7 @@ class TrophyManager {
             ))
         }
         
-        // 4. ARGENT (En dernier) 💰
+        // 4. ARGENT 💰
         let moneyData = [
             (100, "Tirelire"),
             (1000, "Premier Salaire"),
@@ -146,7 +155,7 @@ class TrophyManager {
                 icon: "banknote.fill",
                 category: .money,
                 threshold: Double(threshold),
-                progress: totalEarnings,
+                progress: totalEarnings, // Utilise maintenant le vrai calcul !
                 isUnlocked: totalEarnings >= Double(threshold)
             ))
         }

@@ -18,7 +18,6 @@ struct TrophiesView: View {
                             .shadow(color: .orange.opacity(0.3), radius: 10, x: 0, y: 5)
                         
                         Text("Prochains Objectifs")
-                            // 👇 CORRECTION ICI : .design est intégré dans .font(.system(...))
                             .font(.system(.largeTitle, design: .rounded))
                             .bold()
                     }
@@ -48,7 +47,7 @@ struct TrophiesView: View {
     }
 }
 
-// ✨ STYLE 2 : JAUGE TUBULAIRE ✨
+// ✨ STYLE JAUGE TUBULAIRE AVEC EURO ✨
 struct ActiveObjectiveCard: View {
     let category: TrophyCategory
     let trophy: Trophy
@@ -99,11 +98,20 @@ struct ActiveObjectiveCard: View {
                     
                     // Texte à l'intérieur de la barre (valeurs)
                     HStack {
-                        Text("\(Int(trophy.progress)) / \(Int(trophy.threshold))")
-                            .font(.caption).bold()
-                            .foregroundStyle(.white)
-                            .shadow(radius: 2)
-                            .padding(.leading, 10)
+                        // 👇 AFFICHAGE INTELLIGENT (€ ou standard)
+                        if category == .money {
+                            Text("\(Int(trophy.progress))€ / \(Int(trophy.threshold))€")
+                                .font(.caption).bold()
+                                .foregroundStyle(.white)
+                                .shadow(radius: 2)
+                                .padding(.leading, 10)
+                        } else {
+                            Text("\(Int(trophy.progress)) / \(Int(trophy.threshold))")
+                                .font(.caption).bold()
+                                .foregroundStyle(.white)
+                                .shadow(radius: 2)
+                                .padding(.leading, 10)
+                        }
                         Spacer()
                     }
                 }
