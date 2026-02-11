@@ -300,10 +300,7 @@
         }
       }
     },
-    "Accédez à tout votre historique et aux analyses avancées avec Work&Walk PRO." : {
-
-    },
-    "Accès Premium" : {
+    "Accès Développeur" : {
 
     },
     "Accueil" : {
@@ -748,7 +745,13 @@
     "cm" : {
 
     },
+    "Code secret" : {
+
+    },
     "Commencer l'aventure" : {
+
+    },
+    "Commencer l'essai gratuit" : {
 
     },
     "Comment doit-on vous appeler ?" : {
@@ -763,6 +766,9 @@
           }
         }
       }
+    },
+    "Conditions" : {
+
     },
     "Confidentialité" : {
       "localizations" : {
@@ -797,9 +803,6 @@
       }
     },
     "Débloquer mon historique" : {
-
-    },
-    "Débloquer Pro" : {
 
     },
     "Début" : {
@@ -993,6 +996,9 @@
           }
         }
       }
+    },
+    "Entrez le code pour activer le mode Master ou réinitialiser l'abonnement." : {
+
     },
     "Ex: Alan" : {
 
@@ -1266,9 +1272,6 @@
         }
       }
     },
-    "L'export officiel en PDF est réservé aux membres Work&Walk PRO." : {
-
-    },
     "La génération du PDF récapitulatif sera disponible dans une prochaine mise à jour !" : {
       "comment" : "An alert message informing the user that the export feature is coming soon.",
       "extractionState" : "stale",
@@ -1331,6 +1334,9 @@
       }
     },
     "Marchez, travaillez, et suivez votre progression." : {
+
+    },
+    "Membre PRO 👑" : {
 
     },
     "Merci de votre visite" : {
@@ -1643,6 +1649,12 @@
         }
       }
     },
+    "Passer en Gratuit" : {
+
+    },
+    "Passez au niveau supérieur." : {
+
+    },
     "Période analysée" : {
       "localizations" : {
         "en" : {
@@ -1862,6 +1874,12 @@
         }
       }
     },
+    "Restauration" : {
+
+    },
+    "Restaurer" : {
+
+    },
     "RÉSUMÉ" : {
       "localizations" : {
         "en" : {
@@ -1881,6 +1899,9 @@
           }
         }
       }
+    },
+    "S'abonner maintenant" : {
+
     },
     "Salaire" : {
       "comment" : "A tab label for the salary section of the app.",
@@ -2227,6 +2248,9 @@
         }
       }
     },
+    "Valider" : {
+
+    },
     "Valorisez votre activité\net estimez vos gains." : {
 
     },
@@ -2241,12 +2265,6 @@
           }
         }
       }
-    },
-    "Version Premium Requise" : {
-
-    },
-    "Voir les offres" : {
-
     },
     "Volume Horaire" : {
       "extractionState" : "manual",
@@ -2345,6 +2363,9 @@
           }
         }
       }
+    },
+    "Work&Walk PRO" : {
+
     },
     "www.workandwalk.app" : {
       "localizations" : {

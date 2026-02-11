@@ -12,6 +12,12 @@ import PhotosUI
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     
+    // --- CONNEXION AU PREMIUM ---
+    @ObservedObject var premiumManager = PremiumManager.shared
+    @State private var adminClickCount = 0
+    @State private var showAdminAlert = false
+    @State private var adminCode = ""
+    
     // Stockage des données
     @AppStorage("username") private var username: String = ""
     @AppStorage("userProfileImage") private var userProfileImageBase64: String = ""
@@ -45,25 +51,34 @@ struct SettingsView: View {
                 Section {
                     VStack(spacing: 15) {
                         ZStack(alignment: .topTrailing) {
-                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                                ZStack {
-                                    if let avatar = currentAvatar {
-                                        Image(uiImage: avatar)
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: 100, height: 100)
-                                            .clipShape(Circle())
-                                            .overlay(Circle().stroke(Color.orange, lineWidth: 2))
-                                    } else {
-                                        Circle()
-                                            .fill(Color(UIColor.systemGray5))
-                                            .frame(width: 100, height: 100)
-                                            .overlay(Image(systemName: "person.fill").font(.system(size: 40)).foregroundStyle(.gray))
-                                    }
-                                    Circle().fill(.orange).frame(width: 30, height: 30)
-                                        .overlay(Image(systemName: "pencil").foregroundStyle(.white).font(.caption))
-                                        .offset(x: 35, y: 35)
+                            // 👇 DÉCLENCHEUR SECRET : onTapGesture ajouté ici
+                            ZStack {
+                                if let avatar = currentAvatar {
+                                    Image(uiImage: avatar)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(Color.orange, lineWidth: 2))
+                                } else {
+                                    Circle()
+                                        .fill(Color(UIColor.systemGray5))
+                                        .frame(width: 100, height: 100)
+                                        .overlay(Image(systemName: "person.fill").font(.system(size: 40)).foregroundStyle(.gray))
                                 }
+                            }
+                            .onTapGesture {
+                                adminClickCount += 1
+                                if adminClickCount == 5 {
+                                    showAdminAlert = true
+                                    adminClickCount = 0
+                                }
+                            }
+                            
+                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                                Circle().fill(.orange).frame(width: 30, height: 30)
+                                    .overlay(Image(systemName: "pencil").foregroundStyle(.white).font(.caption))
+                                    .offset(x: 35, y: 35)
                             }.buttonStyle(.plain)
                             
                             if currentAvatar != nil {
@@ -78,7 +93,11 @@ struct SettingsView: View {
                         }
                         
                         VStack(spacing: 5) {
-                            Text("Ton Prénom").font(.caption).foregroundStyle(.secondary).textCase(.uppercase)
+                            Text(premiumManager.isPremium ? "Membre PRO 👑" : "Ton Prénom")
+                                .font(.caption)
+                                .foregroundStyle(premiumManager.isPremium ? .orange : .secondary)
+                                .textCase(.uppercase)
+                            
                             TextField("Entre ton prénom", text: $username)
                                 .font(.title2).bold().multilineTextAlignment(.center).submitLabel(.done)
                         }
@@ -101,22 +120,20 @@ struct SettingsView: View {
                     }
                 }
 
-                // SECTION PRÉFÉRENCES (C'est ici qu'on ajoute le DatePicker)
+                // SECTION PRÉFÉRENCES
                 Section(header: Text("Préférences")) {
-                    // 1. Le Toggle ON/OFF
                     Toggle(isOn: $notificationsEnabled) {
                         Label { Text("Rappels d'horaires") } icon: { Image(systemName: "bell.badge.fill").foregroundStyle(.red) }
                     }
                     .onChange(of: notificationsEnabled) { _, isEnabled in
                         if isEnabled {
-                            NotificationManager.shared.requestAuthorization() // Demande la permission si on active
+                            NotificationManager.shared.requestAuthorization()
                             NotificationManager.shared.scheduleAllNotifications()
                         } else {
                             NotificationManager.shared.cancelAll()
                         }
                     }
                     
-                    // 👇 2. LE SÉLECTEUR D'HEURE (AJOUTÉ ICI)
                     if notificationsEnabled {
                         DatePicker(
                             "Heure du rappel (veille)",
@@ -125,7 +142,6 @@ struct SettingsView: View {
                         )
                     }
 
-                    // 3. Toggle Santé (Désactivé)
                     Toggle(isOn: .constant(true)) {
                         Label { Text("Données Santé") } icon: { Image(systemName: "heart.fill").foregroundStyle(.pink) }
                     }
@@ -178,6 +194,25 @@ struct SettingsView: View {
             .toolbar {
                 Button("OK") { dismiss() }.fontWeight(.bold).foregroundStyle(.orange)
             }
+            // 👇 ALERTE SECRÈTE ADMIN
+            .alert("Accès Développeur", isPresented: $showAdminAlert) {
+                SecureField("Code secret", text: $adminCode)
+                Button("Valider") {
+                    if adminCode == "ALANALAN" {
+                        premiumManager.isPremium = true
+                        UserDefaults.standard.set(true, forKey: "is_admin_premium")
+                    }
+                    adminCode = ""
+                }
+                Button("Passer en Gratuit", role: .destructive) {
+                    premiumManager.isPremium = false
+                    UserDefaults.standard.set(false, forKey: "is_admin_premium")
+                    adminCode = ""
+                }
+                Button("Annuler", role: .cancel) { adminCode = "" }
+            } message: {
+                Text("Entrez le code pour activer le mode Master ou réinitialiser l'abonnement.")
+            }
             .preferredColorScheme(selectedAppearance == 1 ? .light : (selectedAppearance == 2 ? .dark : nil))
             .id(selectedAppearance)
             .onAppear { loadAvatar() }
@@ -209,10 +244,17 @@ struct SettingsView: View {
     }
 }
 
+// 👇 C'EST ICI QUE C'ÉTAIT MANQUANT
 struct LegalDetailView: View {
     let title: String
     let content: String
     var body: some View {
-        ScrollView { Text(content).padding().font(.body) }.navigationTitle(title)
+        ScrollView {
+            Text(content)
+                .padding()
+                .font(.body)
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

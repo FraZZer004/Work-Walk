@@ -156,12 +156,11 @@ struct AnalysisView: View {
             .onAppear { healthManager.requestAuthorization(); analyzeWeek() }
             .sheet(item: $selectedMetric) { metric in DetailMetricView(type: metric, data: getDataFor(metric), language: selectedLanguage) }
             
-            // ALERTE PRO
-            .alert("Accès Premium", isPresented: $showPremiumAlert) {
-                Button("Annuler", role: .cancel) { }
-                Button("Voir les offres") { }
-            } message: {
-                Text("Accédez à tout votre historique et aux analyses avancées avec Work&Walk PRO.")
+            // PAGE DE VENTE PREMIUM (SHEET)
+            .sheet(isPresented: $showPremiumAlert) {
+                SubscriptionView()
+                    .presentationDetents([.fraction(0.9)]) // Prend 90% de l'écran
+                    .presentationDragIndicator(.visible)
             }
         }
     }

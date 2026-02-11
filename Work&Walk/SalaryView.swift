@@ -90,7 +90,6 @@ struct SalaryView: View {
                         }
                         .padding(.horizontal)
                     } else {
-                        // ❌ VERSION GRATUITE : Bouton Bloqué
                         // ❌ VERSION GRATUITE : Bouton "Teaser" Premium
                         Button(action: {
                             showPremiumAlert = true
@@ -260,14 +259,11 @@ struct SalaryView: View {
             .navigationTitle("Mon Salaire")
             .scrollDismissesKeyboard(.interactively) // Glisser pour fermer
             
-            // --- ALERTE PREMIUM ---
-            .alert("Version Premium Requise", isPresented: $showPremiumAlert) {
-                Button("Annuler", role: .cancel) { }
-                Button("Débloquer Pro") {
-                    // Ici on mettra l'action d'achat plus tard
-                }
-            } message: {
-                Text("L'export officiel en PDF est réservé aux membres Work&Walk PRO.")
+            // --- PAGE DE VENTE PREMIUM (SHEET) ---
+            .sheet(isPresented: $showPremiumAlert) {
+                SubscriptionView()
+                    .presentationDetents([.fraction(0.9)]) // Prend 90% de l'écran
+                    .presentationDragIndicator(.visible)
             }
         }
     }
