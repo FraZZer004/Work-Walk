@@ -1,161 +1,163 @@
 import SwiftUI
 
 struct HealthProfileView: View {
-    // Stockage des données physiques
+    // --- STOCKAGE (On garde tes clés exactes) ---
     @AppStorage("userWeight") private var weight: Double = 70.0
     @AppStorage("userHeight") private var height: Double = 175.0
     @AppStorage("userAge") private var age: Int = 30
     @AppStorage("userGender") private var gender: String = "Homme"
     @AppStorage("username") private var username: String = ""
-    
     @AppStorage("userProfileImage") private var userProfileImageBase64: String = ""
-    @State private var currentAvatar: UIImage? = nil
     
-    // 👇 NOUVELLE MÉTHODE MODERNE POUR GÉRER LE CLAVIER
+    @State private var currentAvatar: UIImage? = nil
     @FocusState private var isInputFocused: Bool
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 25) {
-                    
-                    // 1. HEADER
-                    VStack(spacing: 15) {
-                        if let avatar = currentAvatar {
-                            Image(uiImage: avatar)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 3))
-                                .shadow(radius: 5)
-                        } else {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 100))
-                                .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                .shadow(radius: 5)
-                        }
-                        
-                        Text(username.isEmpty ? "Mon Profil" : username)
-                            .font(.title).bold()
-                    }
-                    .padding(.top)
-                    
-                    // 2. FORMULAIRE
-                    VStack(spacing: 0) {
-                        // Sexe
-                        HStack {
-                            Image(systemName: "figure.stand").foregroundStyle(.purple).frame(width: 30)
-                            Text("Sexe")
-                            Spacer()
-                            Picker("Sexe", selection: $gender) {
-                                Text("Homme").tag("Homme"); Text("Femme").tag("Femme")
+            List {
+                // MARK: SECTION 1 - HEADER & IDENTITÉ
+                Section {
+                    HStack(spacing: 20) {
+                        // Avatar (Sobre)
+                        ZStack {
+                            if let avatar = currentAvatar {
+                                Image(uiImage: avatar)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 70, height: 70)
+                                    .clipShape(Circle())
+                            } else {
+                                Image(systemName: "person.crop.circle.fill")
+                                    .resizable()
+                                    .foregroundStyle(.gray.opacity(0.5))
+                                    .frame(width: 70, height: 70)
                             }
-                            .pickerStyle(.segmented).frame(width: 150)
                         }
-                        .padding()
                         
-                        Divider().padding(.leading)
-                        
-                        // Âge
-                        HStack {
-                            Image(systemName: "calendar").foregroundStyle(.blue).frame(width: 30)
-                            Text("Âge")
-                            Spacer()
-                            Stepper("\(age) ans", value: $age, in: 16...99).bold()
+                        VStack(alignment: .leading, spacing: 5) {
+                            TextField("Votre Nom", text: $username)
+                                .font(.headline)
+                            
+                            Text("Profil Personnel")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                        .padding()
-                        
-                        Divider().padding(.leading)
-                        
-                        // POIDS (Sécurisé)
-                        HStack {
-                            Image(systemName: "scalemass.fill").foregroundStyle(.orange).frame(width: 30)
-                            Text("Poids (kg)")
-                            Spacer()
-                            TextField("70", value: $weight, format: .number)
-                                .keyboardType(.decimalPad)
-                                .focused($isInputFocused) // 👈 Connecté au focus
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 60)
-                                .padding(5)
-                                .background(Color(UIColor.systemGray6))
-                                .cornerRadius(8)
-                                // 👇 SÉCURITÉ ANTI-ABERRATION
-                                .onChange(of: weight) { _, newValue in
-                                    if newValue > 300 { weight = 300 } // Max 300 kg
-                                    if newValue < 0 { weight = 0 }     // Pas de poids négatif
-                                }
-                        }
-                        .padding()
-                        
-                        Divider().padding(.leading)
-                        
-                        // TAILLE (Sécurisée)
-                        HStack {
-                            Image(systemName: "ruler.fill").foregroundStyle(.green).frame(width: 30)
-                            Text("Taille (cm)")
-                            Spacer()
-                            TextField("175", value: $height, format: .number)
-                                .keyboardType(.numberPad)
-                                .focused($isInputFocused) // 👈 Connecté au focus
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 60)
-                                .padding(5)
-                                .background(Color(UIColor.systemGray6))
-                                .cornerRadius(8)
-                                // 👇 SÉCURITÉ ANTI-ABERRATION
-                                .onChange(of: height) { _, newValue in
-                                    if newValue > 250 { height = 250 } // Max 2m50
-                                    if newValue < 0 { height = 0 }
-                                }
-                        }
-                        .padding()
                     }
-                    .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .cornerRadius(16)
-                    .padding(.horizontal)
+                    .padding(.vertical, 5)
                     
-                    // 3. CARTES SANTÉ
-                    HStack(spacing: 15) {
-                        HealthCard(
-                            title: "IMC",
-                            value: String(format: "%.1f", calculateIMC()),
-                            subtitle: getIMCCategory(),
-                            color: getIMCColor(),
-                            icon: "heart.text.square.fill"
-                        )
-                        HealthCard(
-                            title: "Métabolisme",
-                            value: "\(Int(calculateBMR()))",
-                            subtitle: "Kcal / jour (Repos)",
-                            color: .blue,
-                            icon: "flame.fill"
-                        )
+                    // Sélecteur de Genre (Style Segmented propre)
+                    Picker("Sexe", selection: $gender) {
+                        Text("Homme").tag("Homme")
+                        Text("Femme").tag("Femme")
                     }
-                    .padding(.horizontal)
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear) // Pour le fondre dans la section
+                    .padding(.vertical, 2)
+                } header: {
+                    Text("Identité")
+                }
+                
+                // MARK: SECTION 2 - MENSURATIONS
+                Section {
+                    // ÂGE
+                    HStack {
+                        Label("Âge", systemImage: "calendar")
+                        Spacer()
+                        Stepper("\(age) ans", value: $age, in: 10...99)
+                            .fixedSize()
+                    }
                     
-                    Spacer()
+                    // TAILLE
+                    HStack {
+                        Label("Taille", systemImage: "ruler")
+                        Spacer()
+                        TextField("175", value: $height, format: .number)
+                            .keyboardType(.numberPad)
+                            .focused($isInputFocused)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                        Text("cm").foregroundStyle(.secondary)
+                    }
+                    
+                    // POIDS
+                    HStack {
+                        Label("Poids", systemImage: "scalemass")
+                        Spacer()
+                        TextField("70", value: $weight, format: .number)
+                            .keyboardType(.decimalPad)
+                            .focused($isInputFocused)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                        Text("kg").foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Données Physiques")
+                } footer: {
+                    Text("Ces données servent à calculer vos calories brûlées avec précision.")
+                }
+                
+                // MARK: SECTION 3 - ANALYSE (La Jauge IMC)
+                Section {
+                    VStack(alignment: .leading, spacing: 15) {
+                        HStack {
+                            Text("IMC Actuel")
+                                .font(.headline)
+                            Spacer()
+                            // Valeur colorée mais texte sobre
+                            Text(String(format: "%.1f", calculateIMC()))
+                                .font(.title3.bold())
+                                .foregroundStyle(getIMCColor())
+                            
+                            Text("(\(getIMCCategory()))")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        // La fameuse Jauge
+                        IMCGaugeView(value: calculateIMC())
+                            .frame(height: 12)
+                        
+                        Divider()
+                        
+                        // Métabolisme (BMR) simple ligne
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Métabolisme de base")
+                                    .font(.body)
+                                Text("Calories brûlées au repos complet")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text("\(Int(calculateBMR())) kcal")
+                                .font(.headline)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    .padding(.vertical, 5)
+                } header: {
+                    Text("Santé")
                 }
             }
-            .background(Color(UIColor.systemGroupedBackground))
-            .navigationTitle("Mon Profil Santé")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Mon Profil")
+            .listStyle(.insetGrouped) // Le secret du look "Apple Réglages"
             .onAppear { loadAvatar() }
-            
-            // 👇 TAPPER N'IMPORTE OÙ FERME LE CLAVIER
-            .onTapGesture {
-                isInputFocused = false
+            // Toolbar Clavier
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Fermer") { isInputFocused = false }
+                }
             }
         }
     }
     
-    // --- FONCTIONS ---
+    // --- LOGIQUE MÉTIER ---
     
     func loadAvatar() {
         if !userProfileImageBase64.isEmpty, let data = Data(base64Encoded: userProfileImageBase64) {
             currentAvatar = UIImage(data: data)
-        } else { currentAvatar = nil }
+        }
     }
     
     func calculateIMC() -> Double {
@@ -185,37 +187,39 @@ struct HealthProfileView: View {
         return gender == "Homme" ? base + 5 : base - 161
     }
 }
-// À coller tout en bas du fichier, en dehors de la struct HealthProfileView
 
-struct HealthCard: View {
-    let title: String
-    let value: String
-    let subtitle: String
-    let color: Color
-    let icon: String
+// MARK: - JAUGE IMC (Clean)
+struct IMCGaugeView: View {
+    var value: Double
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundStyle(color)
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                // Fond dégradé subtil avec coins très arrondis
+                HStack(spacing: 0) {
+                    Color.blue.opacity(0.8).frame(width: geo.size.width * 0.18)
+                    Color.green.opacity(0.8).frame(width: geo.size.width * 0.27)
+                    Color.orange.opacity(0.8).frame(width: geo.size.width * 0.25)
+                    Color.red.opacity(0.8)
+                }
+                .cornerRadius(6)
+                
+                // Curseur propre (Pastille blanche avec ombre)
+                Circle()
+                    .fill(.white)
+                    .frame(width: 24, height: 24)
+                    .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                    .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                    .offset(x: calculateOffset(width: geo.size.width) - 12)
             }
-            
-            Text(value)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(color)
-            
-            Text(subtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+    }
+    
+    func calculateOffset(width: Double) -> Double {
+        let minIMC: Double = 15
+        let maxIMC: Double = 40
+        let percentage = (value - minIMC) / (maxIMC - minIMC)
+        let safePercentage = min(max(percentage, 0), 1)
+        return width * safePercentage
     }
 }

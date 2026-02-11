@@ -96,6 +96,7 @@
 				HealthProfileView.swift,
 				OnboardingView.swift,
 				PlanningView.swift,
+				PremiumManager.swift,
 				SalaryView.swift,
 				SettingsView.swift,
 				ShareManager.swift,

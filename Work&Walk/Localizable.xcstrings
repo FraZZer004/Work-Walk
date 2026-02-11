@@ -30,6 +30,9 @@
         }
       }
     },
+    "(%@)" : {
+
+    },
     "(%lld%%)" : {
       "localizations" : {
         "en" : {
@@ -619,6 +622,9 @@
         }
       }
     },
+    "Calories brûlées au repos complet" : {
+
+    },
     "Cardio Moyen" : {
       "localizations" : {
         "en" : {
@@ -638,6 +644,9 @@
           }
         }
       }
+    },
+    "Ces données servent à calculer vos calories brûlées avec précision." : {
+
     },
     "Ces infos permettent de calculer précisément vos calories brûlées." : {
 
@@ -720,6 +729,9 @@
           }
         }
       }
+    },
+    "cm" : {
+
     },
     "Commencer l'aventure" : {
 
@@ -857,6 +869,9 @@
           }
         }
       }
+    },
+    "Données Physiques" : {
+
     },
     "Données Santé" : {
       "localizations" : {
@@ -1122,6 +1137,12 @@
     "Horaires prévus : %@" : {
 
     },
+    "Identité" : {
+
+    },
+    "IMC Actuel" : {
+
+    },
     "Informations Légales" : {
       "localizations" : {
         "en" : {
@@ -1157,6 +1178,9 @@
     },
     "Key 1" : {
       "extractionState" : "manual"
+    },
+    "kg" : {
+
     },
     "L" : {
       "localizations" : {
@@ -1283,6 +1307,9 @@
         }
       }
     },
+    "Métabolisme de base" : {
+
+    },
     "Mettre à jour les données" : {
       "comment" : "A button label that translates to \"Update data\".",
       "extractionState" : "stale",
@@ -1331,7 +1358,7 @@
         }
       }
     },
-    "Mon Profil Santé" : {
+    "Mon Profil" : {
 
     },
     "Mon Salaire" : {
@@ -1624,6 +1651,9 @@
         }
       }
     },
+    "Poids" : {
+
+    },
     "Poids (kg)" : {
 
     },
@@ -1697,6 +1727,9 @@
       }
     },
     "Profil" : {
+
+    },
+    "Profil Personnel" : {
 
     },
     "Quelle langue parlez-vous ?" : {
@@ -1853,6 +1886,9 @@
         }
       }
     },
+    "Santé" : {
+
+    },
     "Sexe" : {
 
     },
@@ -1951,6 +1987,9 @@
           }
         }
       }
+    },
+    "Taille" : {
+
     },
     "Taille (cm)" : {
 
@@ -2184,6 +2223,9 @@
           }
         }
       }
+    },
+    "Votre Nom" : {
+
     },
     "Votre Prénom" : {
       "comment" : "A label above a text field for the user to enter their first name.",
