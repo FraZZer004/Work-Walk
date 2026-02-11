@@ -10,6 +10,10 @@ import SwiftData
 import Charts
 
 struct SalaryView: View {
+    // --- CONNEXION AU PREMIUM MANAGER ---
+    @ObservedObject var premiumManager = PremiumManager.shared
+    @State private var showPremiumAlert = false
+    
     @Query(sort: \WorkSession.startTime, order: .reverse) private var sessions: [WorkSession]
     @AppStorage("hourlyRate") private var hourlyRate: Double = 11.91
     @AppStorage("taxRate") private var taxRate: Double = 23.05
@@ -68,21 +72,75 @@ struct SalaryView: View {
                     .cornerRadius(20)
                     .padding(.horizontal)
                     
-                    // --- BOUTON EXPORT PDF ---
-                    ShareLink(item: renderPDF(), preview: SharePreview("\(pdfPrefix) \(monthFormatter.string(from: selectedDate))", image: Image("AppLogo"))) {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                            Text(LocalizedStringKey("Exporter la fiche (PDF)"))
+                    // --- BOUTON EXPORT PDF (INTELLIGENT 🔒) ---
+                    if premiumManager.canExportSalaryPDF() {
+                        // ✅ VERSION PREMIUM : Bouton Fonctionnel
+                        ShareLink(item: renderPDF(), preview: SharePreview("\(pdfPrefix) \(monthFormatter.string(from: selectedDate))", image: Image("AppLogo"))) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up")
+                                Text(LocalizedStringKey("Exporter la fiche (PDF)"))
+                            }
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(15)
+                            .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 3)
                         }
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .cornerRadius(15)
-                        .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 3)
+                        .padding(.horizontal)
+                    } else {
+                        // ❌ VERSION GRATUITE : Bouton Bloqué
+                        // ❌ VERSION GRATUITE : Bouton "Teaser" Premium
+                        Button(action: {
+                            showPremiumAlert = true
+                        }) {
+                            HStack(spacing: 12) {
+                                // Icône Cadenas Stylisée
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.orange.opacity(0.2))
+                                        .frame(width: 32, height: 32)
+                                    Image(systemName: "lock.fill")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.orange)
+                                }
+                                
+                                Text("Exporter la fiche")
+                                    .font(.headline)
+                                    .foregroundStyle(.primary) // S'adapte au mode sombre/clair
+                                
+                                Spacer()
+                                
+                                // Badge PRO
+                                Text("PRO")
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .foregroundStyle(.white)
+                                    .cornerRadius(8)
+                                    .shadow(color: .orange.opacity(0.4), radius: 4, x: 0, y: 2)
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding()
+                            .background(Color(UIColor.secondarySystemGroupedBackground)) // Fond carte standard
+                            // Bordure subtile pour montrer que c'est précieux
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(LinearGradient(colors: [.orange.opacity(0.5), .clear], startPoint: .leading, endPoint: .trailing), lineWidth: 1.5)
+                            )
+                            .cornerRadius(16)
+                            // Ombre légère pour le détacher
+                            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        }
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal)
                     
                     // --- DÉTAILS DU CALCUL ---
                     VStack(alignment: .leading, spacing: 15) {
@@ -201,6 +259,16 @@ struct SalaryView: View {
             }
             .navigationTitle("Mon Salaire")
             .scrollDismissesKeyboard(.interactively) // Glisser pour fermer
+            
+            // --- ALERTE PREMIUM ---
+            .alert("Version Premium Requise", isPresented: $showPremiumAlert) {
+                Button("Annuler", role: .cancel) { }
+                Button("Débloquer Pro") {
+                    // Ici on mettra l'action d'achat plus tard
+                }
+            } message: {
+                Text("L'export officiel en PDF est réservé aux membres Work&Walk PRO.")
+            }
         }
     }
     
@@ -281,27 +349,25 @@ struct SalaryView: View {
         return f
     }
     
-    // À ajouter dans SalaryView.swift
-
-        // 1. La fonction qui calcule le total d'aujourd'hui
-        func updateWidgetData() {
-            // On filtre les sessions d'aujourd'hui seulement
-            let today = Date()
-            let calendar = Calendar.current
-            let todaysSessions = sessions.filter { calendar.isDate($0.startTime, inSameDayAs: today) }
-            
-            // On calcule le total
-            let totalSeconds = todaysSessions.reduce(0) { $0 + ($1.endTime?.timeIntervalSince($1.startTime) ?? 0) }
-            let totalHours = totalSeconds / 3600.0
-            let totalSalary = totalHours * hourlyRate
-            
-            // On sauvegarde pour le HealthManager
-            UserDefaults.standard.set(totalSalary, forKey: "manual_today_salary")
-            UserDefaults.standard.set(formatHours(totalHours), forKey: "manual_today_hours")
-            
-            // On force le rafraîchissement immédiat
-            HealthManager.shared.fetchTodayStepsAndRefreshWidget()
-        }
+    // 1. La fonction qui calcule le total d'aujourd'hui
+    func updateWidgetData() {
+        // On filtre les sessions d'aujourd'hui seulement
+        let today = Date()
+        let calendar = Calendar.current
+        let todaysSessions = sessions.filter { calendar.isDate($0.startTime, inSameDayAs: today) }
+        
+        // On calcule le total
+        let totalSeconds = todaysSessions.reduce(0) { $0 + ($1.endTime?.timeIntervalSince($1.startTime) ?? 0) }
+        let totalHours = totalSeconds / 3600.0
+        let totalSalary = totalHours * hourlyRate
+        
+        // On sauvegarde pour le HealthManager
+        UserDefaults.standard.set(totalSalary, forKey: "manual_today_salary")
+        UserDefaults.standard.set(formatHours(totalHours), forKey: "manual_today_hours")
+        
+        // On force le rafraîchissement immédiat
+        HealthManager.shared.fetchTodayStepsAndRefreshWidget()
+    }
 }
 
 // --- SOUS-VUES ---
