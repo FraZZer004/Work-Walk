@@ -1,225 +1,223 @@
 import SwiftUI
 
 struct HealthProfileView: View {
-    // --- STOCKAGE (On garde tes clés exactes) ---
+    @Environment(\.dismiss) var dismiss
+    
+    // --- DONNÉES UTILISATEUR (Sauvegarde Auto) ---
     @AppStorage("userWeight") private var weight: Double = 70.0
     @AppStorage("userHeight") private var height: Double = 175.0
-    @AppStorage("userAge") private var age: Int = 30
-    @AppStorage("userGender") private var gender: String = "Homme"
-    @AppStorage("username") private var username: String = ""
-    @AppStorage("userProfileImage") private var userProfileImageBase64: String = ""
+    @AppStorage("userAge") private var age: Int = 25
+    @AppStorage("userGender") private var gender: String = "male" // "male" ou "female"
     
-    @State private var currentAvatar: UIImage? = nil
-    @FocusState private var isInputFocused: Bool
+    // Calcul de l'IMC en temps réel
+    var bmi: Double {
+        let heightInMeters = height / 100
+        guard heightInMeters > 0 else { return 0 }
+        return weight / (heightInMeters * heightInMeters)
+    }
     
+    var bmiColor: Color {
+        switch bmi {
+        case ..<18.5: return .blue
+        case 18.5..<25: return .green
+        case 25..<30: return .orange
+        default: return .red
+        }
+    }
+    
+    var bmiText: String {
+        switch bmi {
+        case ..<18.5: return "Maigreur"
+        case 18.5..<25: return "Poids normal"
+        case 25..<30: return "Surpoids"
+        default: return "Obésité"
+        }
+    }
+
     var body: some View {
         NavigationStack {
-            List {
-                // MARK: SECTION 1 - HEADER & IDENTITÉ
-                Section {
-                    HStack(spacing: 20) {
-                        // Avatar (Sobre)
-                        ZStack {
-                            if let avatar = currentAvatar {
-                                Image(uiImage: avatar)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 70, height: 70)
-                                    .clipShape(Circle())
-                            } else {
-                                Image(systemName: "person.crop.circle.fill")
-                                    .resizable()
-                                    .foregroundStyle(.gray.opacity(0.5))
-                                    .frame(width: 70, height: 70)
+            ZStack {
+                // Fond sombre
+                Color.black.ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 25) {
+                        
+                        // 1. JAUGE IMC (Le truc stylé en haut)
+                        VStack(spacing: 10) {
+                            Text("VOTRE IMC ACTUEL")
+                                .font(.caption).bold().foregroundStyle(.gray)
+                                .tracking(2)
+                            
+                            HStack(alignment: .lastTextBaseline) {
+                                Text(String(format: "%.1f", bmi))
+                                    .font(.system(size: 60, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.white)
+                                
+                                Text(bmiText)
+                                    .font(.headline)
+                                    .foregroundStyle(bmiColor)
+                                    .padding(.bottom, 12)
+                            }
+                            
+                            // Barre de progression visuelle
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(Color.gray.opacity(0.3)).frame(height: 8)
+                                    
+                                    // Dégradé de couleur
+                                    LinearGradient(colors: [.blue, .green, .orange, .red], startPoint: .leading, endPoint: .trailing)
+                                        .mask(Capsule())
+                                        .frame(height: 8)
+                                    
+                                    // Curseur blanc
+                                    Circle()
+                                        .fill(.white)
+                                        .frame(width: 20, height: 20)
+                                        .shadow(color: .black.opacity(0.5), radius: 2)
+                                        // 👇 C'est ici qu'on appelle la fonction simplifiée
+                                        .offset(x: calculateOffset(maxWidth: geo.size.width))
+                                }
+                            }
+                            .frame(height: 20)
+                            .padding(.horizontal, 40)
+                        }
+                        .padding(.vertical, 30)
+                        
+                        // 2. SÉLECTEUR DE GENRE (Gros boutons)
+                        HStack(spacing: 15) {
+                            // Bouton Homme (Icône corrigée si nécessaire, mais 'figure.stand' est OK)
+                            GenderButton(icon: "figure.stand", title: "Homme", isSelected: gender == "male") {
+                                withAnimation { gender = "male" }
+                            }
+                            
+                            // 👇 BOUTON FEMME CORRIGÉ : Icône 'figure.dress' utilisée ici 👇
+                            GenderButton(icon: "figure.stand.dress", title: "Femme", isSelected: gender == "female") {
+                                withAnimation { gender = "female" }
                             }
                         }
+                        .padding(.horizontal)
                         
-                        VStack(alignment: .leading, spacing: 5) {
-                            TextField("Votre Nom", text: $username)
-                                .font(.headline)
-                            
-                            Text("Profil Personnel")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 5)
-                    
-                    // Sélecteur de Genre (Style Segmented propre)
-                    Picker("Sexe", selection: $gender) {
-                        Text("Homme").tag("Homme")
-                        Text("Femme").tag("Femme")
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Color.clear) // Pour le fondre dans la section
-                    .padding(.vertical, 2)
-                } header: {
-                    Text("Identité")
-                }
-                
-                // MARK: SECTION 2 - MENSURATIONS
-                Section {
-                    // ÂGE
-                    HStack {
-                        Label("Âge", systemImage: "calendar")
-                        Spacer()
-                        Stepper("\(age) ans", value: $age, in: 10...99)
-                            .fixedSize()
-                    }
-                    
-                    // TAILLE
-                    HStack {
-                        Label("Taille", systemImage: "ruler")
-                        Spacer()
-                        TextField("175", value: $height, format: .number)
-                            .keyboardType(.numberPad)
-                            .focused($isInputFocused)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                        Text("cm").foregroundStyle(.secondary)
-                    }
-                    
-                    // POIDS
-                    HStack {
-                        Label("Poids", systemImage: "scalemass")
-                        Spacer()
-                        TextField("70", value: $weight, format: .number)
-                            .keyboardType(.decimalPad)
-                            .focused($isInputFocused)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                        Text("kg").foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Données Physiques")
-                } footer: {
-                    Text("Ces données servent à calculer vos calories brûlées avec précision.")
-                }
-                
-                // MARK: SECTION 3 - ANALYSE (La Jauge IMC)
-                Section {
-                    VStack(alignment: .leading, spacing: 15) {
-                        HStack {
-                            Text("IMC Actuel")
-                                .font(.headline)
-                            Spacer()
-                            // Valeur colorée mais texte sobre
-                            Text(String(format: "%.1f", calculateIMC()))
-                                .font(.title3.bold())
-                                .foregroundStyle(getIMCColor())
-                            
-                            Text("(\(getIMCCategory()))")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        // La fameuse Jauge
-                        IMCGaugeView(value: calculateIMC())
-                            .frame(height: 12)
-                        
-                        Divider()
-                        
-                        // Métabolisme (BMR) simple ligne
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Métabolisme de base")
-                                    .font(.body)
-                                Text("Calories brûlées au repos complet")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                        // 3. SLIDERS POIDS & TAILLE & AGE
+                        VStack(spacing: 15) {
+                            MetricCard(title: "Poids", value: String(format: "%.0f", weight), unit: "kg", icon: "scalemass.fill", color: .orange) {
+                                Stepper("", value: $weight, in: 30...200, step: 1).labelsHidden()
                             }
-                            Spacer()
-                            Text("\(Int(calculateBMR())) kcal")
-                                .font(.headline)
-                                .foregroundStyle(.orange)
+                            
+                            MetricCard(title: "Taille", value: String(format: "%.0f", height), unit: "cm", icon: "ruler.fill", color: .blue) {
+                                Stepper("", value: $height, in: 100...250, step: 1).labelsHidden()
+                            }
+                            
+                            MetricCard(title: "Âge", value: "\(age)", unit: "ans", icon: "calendar", color: .purple) {
+                                Stepper("", value: $age, in: 10...100, step: 1).labelsHidden()
+                            }
                         }
+                        .padding(.horizontal)
+                        
+                        Spacer()
                     }
-                    .padding(.vertical, 5)
-                } header: {
-                    Text("Santé")
+                    .padding(.bottom, 40)
                 }
             }
-            .navigationTitle("Mon Profil")
-            .listStyle(.insetGrouped) // Le secret du look "Apple Réglages"
-            .onAppear { loadAvatar() }
-            // Toolbar Clavier
+            .navigationTitle("Mon Physique")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Fermer") { isInputFocused = false }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Fermer") { dismiss() }.tint(.orange)
                 }
             }
         }
     }
     
-    // --- LOGIQUE MÉTIER ---
-    
-    func loadAvatar() {
-        if !userProfileImageBase64.isEmpty, let data = Data(base64Encoded: userProfileImageBase64) {
-            currentAvatar = UIImage(data: data)
-        }
-    }
-    
-    func calculateIMC() -> Double {
-        let hM = height / 100
-        if hM == 0 { return 0 }
-        return weight / (hM * hM)
-    }
-    
-    func getIMCCategory() -> String {
-        let imc = calculateIMC()
-        if imc < 18.5 { return "Maigreur" }
-        else if imc < 25 { return "Normal" }
-        else if imc < 30 { return "Surpoids" }
-        else { return "Obésité" }
-    }
-    
-    func getIMCColor() -> Color {
-        let imc = calculateIMC()
-        if imc < 18.5 { return .blue }
-        else if imc < 25 { return .green }
-        else if imc < 30 { return .orange }
-        else { return .red }
-    }
-    
-    func calculateBMR() -> Double {
-        let base = (10 * weight) + (6.25 * height) - (5 * Double(age))
-        return gender == "Homme" ? base + 5 : base - 161
+    // 👇 FONCTION D'AIDE POUR CALCULER L'OFFSET (Sépare la logique complexe de la Vue)
+    func calculateOffset(maxWidth: CGFloat) -> CGFloat {
+        // On convertit tout en CGFloat pour le calcul
+        let currentBMI = CGFloat(bmi)
+        let minBMI: CGFloat = 10.0
+        let rangeBMI: CGFloat = 30.0 // De 10 à 40
+        
+        // Calcul de la position théorique
+        let ratio = (currentBMI - minBMI) / rangeBMI
+        let position = ratio * maxWidth
+        
+        // On limite pour ne pas sortir de la barre (Clamping)
+        // Le "- 20" correspond à la largeur du cercle blanc pour qu'il ne dépasse pas
+        return min(max(0, position), maxWidth - 20)
     }
 }
 
-// MARK: - JAUGE IMC (Clean)
-struct IMCGaugeView: View {
-    var value: Double
+// MARK: - COMPOSANTS DESIGN (Inchangés)
+
+struct GenderButton: View {
+    let icon: String
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
     
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                // Fond dégradé subtil avec coins très arrondis
-                HStack(spacing: 0) {
-                    Color.blue.opacity(0.8).frame(width: geo.size.width * 0.18)
-                    Color.green.opacity(0.8).frame(width: geo.size.width * 0.27)
-                    Color.orange.opacity(0.8).frame(width: geo.size.width * 0.25)
-                    Color.red.opacity(0.8)
-                }
-                .cornerRadius(6)
-                
-                // Curseur propre (Pastille blanche avec ombre)
-                Circle()
-                    .fill(.white)
-                    .frame(width: 24, height: 24)
-                    .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
-                    .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                    .offset(x: calculateOffset(width: geo.size.width) - 12)
+        Button(action: action) {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 30))
+                Text(title)
+                    .font(.headline)
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 100)
+            .background(isSelected ? Color.orange : Color(UIColor.systemGray6).opacity(0.1))
+            .foregroundStyle(isSelected ? .black : .gray)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(isSelected ? Color.orange : Color.gray.opacity(0.3), lineWidth: isSelected ? 0 : 1)
+            )
+            .cornerRadius(20)
+            .shadow(color: isSelected ? .orange.opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
         }
     }
+}
+
+struct MetricCard<Content: View>: View {
+    let title: String
+    let value: String
+    let unit: String
+    let icon: String
+    let color: Color
+    @ViewBuilder let stepper: () -> Content
     
-    func calculateOffset(width: Double) -> Double {
-        let minIMC: Double = 15
-        let maxIMC: Double = 40
-        let percentage = (value - minIMC) / (maxIMC - minIMC)
-        let safePercentage = min(max(percentage, 0), 1)
-        return width * safePercentage
+    var body: some View {
+        HStack {
+            // Icône
+            ZStack {
+                Circle().fill(color.opacity(0.2)).frame(width: 44, height: 44)
+                Image(systemName: icon).foregroundStyle(color).font(.headline)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.caption).foregroundStyle(.gray).textCase(.uppercase)
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(value).font(.title2).bold().foregroundStyle(.white)
+                    Text(unit).font(.subheadline).foregroundStyle(.gray)
+                }
+            }
+            
+            Spacer()
+            
+            // Le stepper natif d'Apple
+            stepper()
+                .scaleEffect(1.1)
+        }
+        .padding()
+        .background(Color(UIColor.systemGray6).opacity(0.1))
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+        )
     }
+}
+
+#Preview {
+    HealthProfileView()
 }

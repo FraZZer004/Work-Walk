@@ -33,9 +33,6 @@
         }
       }
     },
-    "(%@)" : {
-
-    },
     "(%lld%%)" : {
       "localizations" : {
         "en" : {
@@ -130,9 +127,6 @@
           }
         }
       }
-    },
-    "%lld ans" : {
-
     },
     "%lld kcal" : {
       "localizations" : {
@@ -350,9 +344,6 @@
           }
         }
       }
-    },
-    "Âge" : {
-
     },
     "Ajouter" : {
       "comment" : "A button that triggers the creation of a new work session.",
@@ -634,9 +625,6 @@
         }
       }
     },
-    "Calories brûlées au repos complet" : {
-
-    },
     "Cardio Moyen" : {
       "localizations" : {
         "en" : {
@@ -656,9 +644,6 @@
           }
         }
       }
-    },
-    "Ces données servent à calculer vos calories brûlées avec précision." : {
-
     },
     "Ces infos permettent de calculer précisément vos calories brûlées." : {
 
@@ -741,9 +726,6 @@
           }
         }
       }
-    },
-    "cm" : {
-
     },
     "Code secret" : {
 
@@ -893,9 +875,6 @@
           }
         }
       }
-    },
-    "Données Physiques" : {
-
     },
     "Données Santé" : {
       "localizations" : {
@@ -1170,12 +1149,6 @@
     "Horaires prévus : %@" : {
 
     },
-    "Identité" : {
-
-    },
-    "IMC Actuel" : {
-
-    },
     "Informations Légales" : {
       "localizations" : {
         "en" : {
@@ -1211,9 +1184,6 @@
     },
     "Key 1" : {
       "extractionState" : "manual"
-    },
-    "kg" : {
-
     },
     "Km (Pro)" : {
 
@@ -1349,9 +1319,6 @@
         }
       }
     },
-    "Métabolisme de base" : {
-
-    },
     "Mettre à jour les données" : {
       "comment" : "A button label that translates to \"Update data\".",
       "extractionState" : "stale",
@@ -1400,7 +1367,7 @@
         }
       }
     },
-    "Mon Profil" : {
+    "Mon Physique" : {
 
     },
     "Mon Salaire" : {
@@ -1699,9 +1666,6 @@
         }
       }
     },
-    "Poids" : {
-
-    },
     "Poids (kg)" : {
 
     },
@@ -1778,9 +1742,6 @@
       }
     },
     "Profil" : {
-
-    },
-    "Profil Personnel" : {
 
     },
     "Quelle langue parlez-vous ?" : {
@@ -1946,9 +1907,6 @@
         }
       }
     },
-    "Santé" : {
-
-    },
     "Sexe" : {
 
     },
@@ -2047,9 +2005,6 @@
           }
         }
       }
-    },
-    "Taille" : {
-
     },
     "Taille (cm)" : {
 
@@ -2287,7 +2242,7 @@
         }
       }
     },
-    "Votre Nom" : {
+    "VOTRE IMC ACTUEL" : {
 
     },
     "Votre Prénom" : {
