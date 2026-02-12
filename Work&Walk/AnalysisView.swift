@@ -483,16 +483,147 @@ struct SimpleCardioCard: View {
     }
 }
 
-// 7. Vue Détail (Sheet)
+// 7. Vue Détail (Sheet) - STYLE GLOW & GLASS
 struct DetailMetricView: View {
-    let type: MetricType; let data: [DailyData]; let language: String; @Environment(\.dismiss) var dismiss
+    let type: MetricType
+    let data: [DailyData]
+    let language: String
+    @Environment(\.dismiss) var dismiss
+    
     var body: some View {
         NavigationStack {
-            List {
-                Section(header: Text("Vue d'ensemble")) { Chart { ForEach(data) { day in BarMark(x: .value("Jour", day.dayName), y: .value("Travail", day.workVal)).foregroundStyle(type.color); if type != .heart { BarMark(x: .value("Jour", day.dayName), y: .value("Perso", day.lifeVal)).foregroundStyle(type.color.opacity(0.3)) } else { PointMark(x: .value("Jour", day.dayName), y: .value("Perso", day.lifeVal)).foregroundStyle(Color.gray) } } }.frame(height: 200).padding(.vertical) }
-                Section(header: Text("Détails par jour")) { ForEach(data.reversed()) { day in HStack { VStack(alignment: .leading) { Text(day.date.formatted(date: .abbreviated, time: .omitted)).bold(); Text(day.dayName.capitalized).font(.caption).foregroundStyle(.secondary) }; Spacer(); VStack(alignment: .trailing, spacing: 4) { HStack { Text("Travail").font(.caption2).foregroundStyle(.secondary); Text(format(day.workVal)).bold().foregroundStyle(type.color).frame(minWidth: 60, alignment: .trailing) }; HStack { Text("Perso").font(.caption2).foregroundStyle(.secondary); Text(format(day.lifeVal)).bold().foregroundStyle(type == .heart ? Color.gray : type.color.opacity(0.6)).frame(minWidth: 60, alignment: .trailing) }; if type != .heart { Rectangle().fill(Color.gray.opacity(0.3)).frame(width: 80, height: 1).padding(.vertical, 2); HStack { Text("Total").font(.caption2).bold(); Text(format(day.workVal + day.lifeVal)).bold().foregroundStyle(.primary).frame(minWidth: 60, alignment: .trailing) } } } }.padding(.vertical, 4) } }
-            }.navigationTitle(type.title).navigationBarTitleDisplayMode(.inline).toolbar { Button("Fermer") { dismiss() } }
+            ZStack {
+                // 1. FOND GLOBAL
+                GlowBackground()
+                
+                ScrollView {
+                    VStack(spacing: 25) {
+                        
+                        // --- SECTION GRAPHIQUE ---
+                        VStack(alignment: .leading, spacing: 15) {
+                            Text("Vue d'ensemble")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 5)
+                            
+                            // Carte du Graphique
+                            VStack {
+                                Chart {
+                                    ForEach(data) { day in
+                                        BarMark(
+                                            x: .value("Jour", day.dayName),
+                                            y: .value("Travail", day.workVal)
+                                        )
+                                        .foregroundStyle(type.color)
+                                        
+                                        if type != .heart {
+                                            BarMark(
+                                                x: .value("Jour", day.dayName),
+                                                y: .value("Perso", day.lifeVal)
+                                            )
+                                            .foregroundStyle(type.color.opacity(0.3))
+                                        } else {
+                                            PointMark(
+                                                x: .value("Jour", day.dayName),
+                                                y: .value("Perso", day.lifeVal)
+                                            )
+                                            .foregroundStyle(Color.gray)
+                                        }
+                                    }
+                                }
+                                .frame(height: 200)
+                            }
+                            .padding()
+                            // ✨ EFFET VERRE + BORDURE ORANGE ✨
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(20)
+                            .glowBorder(cornerRadius: 20)
+                        }
+                        
+                        // --- SECTION LISTE DÉTAILLÉE ---
+                        VStack(alignment: .leading, spacing: 15) {
+                            Text("Détails par jour")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 5)
+                            
+                            // Boucle sur les jours
+                            ForEach(data.reversed()) { day in
+                                HStack {
+                                    // Date
+                                    VStack(alignment: .leading) {
+                                        Text(day.date.formatted(date: .abbreviated, time: .omitted))
+                                            .bold()
+                                            .foregroundStyle(.primary)
+                                        Text(day.dayName.capitalized)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    // Valeurs
+                                    VStack(alignment: .trailing, spacing: 4) {
+                                        HStack {
+                                            Text("Travail").font(.caption2).foregroundStyle(.secondary)
+                                            Text(format(day.workVal))
+                                                .bold()
+                                                .foregroundStyle(type.color)
+                                                .frame(minWidth: 60, alignment: .trailing)
+                                        }
+                                        
+                                        HStack {
+                                            Text("Perso").font(.caption2).foregroundStyle(.secondary)
+                                            Text(format(day.lifeVal))
+                                                .bold()
+                                                .foregroundStyle(type == .heart ? Color.gray : type.color.opacity(0.6))
+                                                .frame(minWidth: 60, alignment: .trailing)
+                                        }
+                                        
+                                        // Total (sauf pour le cardio où ça n'a pas de sens d'additionner)
+                                        if type != .heart {
+                                            Rectangle()
+                                                .fill(Color.primary.opacity(0.1))
+                                                .frame(width: 80, height: 1)
+                                                .padding(.vertical, 2)
+                                            
+                                            HStack {
+                                                Text("Total").font(.caption2).bold()
+                                                Text(format(day.workVal + day.lifeVal))
+                                                    .bold()
+                                                    .foregroundStyle(.primary)
+                                                    .frame(minWidth: 60, alignment: .trailing)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding()
+                                // ✨ EFFET VERRE + BORDURE ORANGE SUR CHAQUE LIGNE ✨
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(16)
+                                .glowBorder(cornerRadius: 16)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+            }
+            .navigationTitle(type.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                Button("Fermer") { dismiss() }
+                    .fontWeight(.bold)
+                    .foregroundStyle(.orange)
+            }
         }
     }
-    func format(_ val: Double) -> String { if type == .distance { return String(format: "%.2f km", val) }; return "\(Int(val)) \(type.unit)" }
+    
+    func format(_ val: Double) -> String {
+        if type == .distance {
+            return String(format: "%.2f km", val)
+        }
+        return "\(Int(val)) \(type.unit)"
+    }
 }

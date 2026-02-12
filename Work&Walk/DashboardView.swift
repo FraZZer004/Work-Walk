@@ -7,6 +7,9 @@ struct DashboardView: View {
     @State private var healthManager = HealthManager()
     @ObservedObject var premiumManager = PremiumManager.shared
     
+    // 👇 AJOUT : Pour détecter si on est en mode Sombre ou Clair
+    @Environment(\.colorScheme) var colorScheme
+    
     @Query(sort: \WorkSession.startTime, order: .reverse) private var sessions: [WorkSession]
     @State private var weeklyData: [DailyActivity] = []
     
@@ -25,7 +28,7 @@ struct DashboardView: View {
     
     var body: some View {
         NavigationStack {
-            // 👇 LE CHANGEMENT EST ICI : On force le fond DANS la vue
+            // 👇 ZSTACK pour le fond Glow
             ZStack {
                 // 1. LE FOND
                 GlowBackground()
@@ -98,6 +101,7 @@ struct DashboardView: View {
                 Text(username.isEmpty ? "Bienvenue" : username).font(.largeTitle).bold().foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.8)
             }
             Spacer()
+            // Bouton Liste
             Button(action: { showEditDashboard = true }) { Image(systemName: "list.bullet.circle.fill").font(.system(size: 32)).foregroundStyle(.orange.opacity(0.8)) }
         }.padding(.horizontal).padding(.top, 10)
     }
@@ -130,9 +134,31 @@ struct DashboardView: View {
     var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 16) {
-                Button { showShareSheet = true } label: { Image(systemName: "square.and.arrow.up.circle.fill").symbolRenderingMode(.palette).foregroundStyle(.white, .blue).font(.system(size: 28)) }
-                Button { showTrophies = true } label: { Image(systemName: "trophy.circle.fill").symbolRenderingMode(.palette).foregroundStyle(.white, .orange).font(.system(size: 28)) }
-                Button { showSettings = true } label: { Image(systemName: "gearshape.fill").foregroundStyle(.gray).font(.system(size: 22)) }
+                // Bouton Partage
+                Button { showShareSheet = true } label: {
+                    Image(systemName: "square.and.arrow.up.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, .blue)
+                        .font(.system(size: 28))
+                }
+                
+                // 🏆 Bouton Trophées INTELLIGENT
+                Button { showTrophies = true } label: {
+                    Image(systemName: "trophy.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        // 👇 C'est ici que la magie opère :
+                        // Si Sombre -> Noir sur Orange
+                        // Si Clair -> Blanc sur Orange (pour simuler la transparence du fond blanc)
+                        .foregroundStyle(colorScheme == .dark ? .black : .white, .orange)
+                        .font(.system(size: 28))
+                }
+                
+                // Bouton Paramètres
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundStyle(.gray)
+                        .font(.system(size: 22))
+                }
             }
         }
     }
@@ -157,7 +183,12 @@ struct DashboardView: View {
         VStack(alignment: .leading) {
             HStack { Image(systemName: icon).foregroundStyle(color); Text(LocalizedStringKey(title)).font(.caption).foregroundStyle(.secondary) }
             Text(value).font(.system(size: 24, weight: .bold)).foregroundStyle(.primary)
-        }.padding().frame(maxWidth: .infinity, alignment: .leading).background(Color(UIColor.systemGray6)).cornerRadius(16).glowBorder(cornerRadius: 16)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(16)
+        .glowBorder(cornerRadius: 16)
     }
     
     func syncStepsForAllSessions() {
@@ -308,7 +339,6 @@ struct DashboardConfigView: View {
     
     var body: some View {
         NavigationStack {
-            // 👇 AJOUT ICI : Fond aussi pour la config
             ZStack {
                 GlowBackground()
                 
@@ -326,7 +356,6 @@ struct DashboardConfigView: View {
                                 
                                 // ✅ LOGIQUE DE VERROUILLAGE
                                 if isPremium(widget.type) && !premiumManager.isPremium {
-                                    // MODE CADENAS (User Gratuit + Widget Payant)
                                     HStack(spacing: 8) {
                                         Text("PRO")
                                             .font(.caption2.bold())
@@ -339,12 +368,11 @@ struct DashboardConfigView: View {
                                         Image(systemName: "lock.fill")
                                             .foregroundStyle(.gray)
                                     }
-                                    .contentShape(Rectangle()) // Rend la zone cliquable
+                                    .contentShape(Rectangle())
                                     .onTapGesture {
                                         showSubscriptionView = true
                                     }
                                 } else {
-                                    // MODE NORMAL (Toggle)
                                     Toggle("", isOn: $widget.isVisible)
                                         .labelsHidden()
                                         .tint(.orange)
@@ -354,17 +382,15 @@ struct DashboardConfigView: View {
                         .onMove(perform: move)
                     }
                 }
-                .scrollContentBackground(.hidden) // IMPORTANT
+                .scrollContentBackground(.hidden)
             }
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Modifier l'affichage")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("OK") { dismiss() } }
-            // Ouvre l'abonnement si on clique sur un cadenas
             .sheet(isPresented: $showSubscriptionView) {
                 SubscriptionView()
             }
-            // Sécurité : désactive les widgets premium si l'user est gratuit
             .onAppear {
                 if !premiumManager.isPremium {
                     for index in widgets.indices {
@@ -379,7 +405,6 @@ struct DashboardConfigView: View {
     
     func move(from source: IndexSet, to destination: Int) { widgets.move(fromOffsets: source, toOffset: destination) }
     
-    // Définition des widgets payants
     func isPremium(_ type: MetricType) -> Bool {
         return type == .distance || type == .heart || type == .flights
     }

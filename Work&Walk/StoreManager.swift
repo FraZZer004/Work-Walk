@@ -8,6 +8,7 @@ class StoreManager: ObservableObject {
     
     @Published var subscriptions: [Product] = []
     @Published var purchasedProductIDs = Set<String>()
+    @Published var isPremium: Bool = false
     
     private var updateListenerTask: Task<Void, Error>? = nil
     let productIDs = ["workwalk_premium_annual", "workwalk_premium_monthly"]
@@ -24,6 +25,7 @@ class StoreManager: ObservableObject {
         updateListenerTask?.cancel()
     }
     
+    // 1. CHARGEMENT
     func fetchProducts() async {
         do {
             let storeProducts = try await Product.products(for: productIDs)
@@ -33,33 +35,56 @@ class StoreManager: ObservableObject {
         }
     }
     
+    // 2. ACHAT
     func purchase(_ product: Product) async throws {
         let result = try await product.purchase()
+        
         switch result {
         case .success(let verification):
-            _ = try checkVerified(verification)
+            // Ici on est dans une fonction async du MainActor, donc l'appel est direct
+            let transaction = try checkVerified(verification)
             await updatePurchasedProducts()
-        default: break
+            await transaction.finish()
+        case .userCancelled, .pending:
+            break
+        default:
+            break
         }
     }
     
+    // 3. RESTAURATION
+    func restorePurchases() async {
+        try? await AppStore.sync()
+        await updatePurchasedProducts()
+    }
+    
+    // 4. VÉRIFICATION
     func updatePurchasedProducts() async {
         var newPurchasedProductIDs = Set<String>()
+        
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
             if transaction.revocationDate == nil {
                 newPurchasedProductIDs.insert(transaction.productID)
             }
         }
+        
         self.purchasedProductIDs = newPurchasedProductIDs
         
-        // Sécurité Master : On ne met à jour via Apple QUE si l'admin n'a pas déjà forcé le mode
-        if !UserDefaults.standard.bool(forKey: "is_admin_premium") {
-            PremiumManager.shared.isPremium = !newPurchasedProductIDs.isEmpty
+        // Logique Admin vs Apple
+        if UserDefaults.standard.bool(forKey: "is_admin_premium") {
+            PremiumManager.shared.isPremium = true
+            self.isPremium = true
+        } else {
+            let hasActiveSubscription = !newPurchasedProductIDs.isEmpty
+            PremiumManager.shared.isPremium = hasActiveSubscription
+            self.isPremium = hasActiveSubscription
         }
     }
     
-    private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
+    // 👇 LE FIX EST ICI : "nonisolated"
+    // Cela permet à la fonction d'être appelée depuis la Task.detached sans erreur
+    nonisolated private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .unverified: throw StoreError.failedVerification
         case .verified(let safe): return safe
@@ -67,11 +92,16 @@ class StoreManager: ObservableObject {
     }
     
     private func listenForTransactions() -> Task<Void, Error> {
+        // Task.detached tourne en arrière-plan
         Task.detached {
             for await result in Transaction.updates {
                 do {
-                    _ = try await self.checkVerified(result)
+                    // Grâce à 'nonisolated', on peut appeler checkVerified ici sans 'await'
+                    let transaction = try self.checkVerified(result)
+                    
+                    // Pour mettre à jour l'UI, on doit repasser sur le MainActor (await)
                     await self.updatePurchasedProducts()
+                    await transaction.finish()
                 } catch {
                     print("Transaction update error")
                 }
@@ -80,7 +110,6 @@ class StoreManager: ObservableObject {
     }
 }
 
-// 👇 C'EST CE PETIT BOUT DE CODE QUI TE MANQUAIT
 enum StoreError: Error {
     case failedVerification
 }
