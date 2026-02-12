@@ -36,122 +36,129 @@ struct AnalysisView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 25) {
-                    
-                    // 🔒 VÉRIFICATION DE L'HISTORIQUE
-                    if premiumManager.canViewHistory(for: selectedDate) {
+            // 👇 1. LE ZSTACK MAGIQUE
+            ZStack {
+                GlowBackground()
+                
+                ScrollView {
+                    VStack(spacing: 25) {
                         
-                        // --- CAS 1 : ACCÈS AUTORISÉ ✅ ---
-                        
-                        // 1. LE RÉCAP HEBDO
-                        WeeklyRecapView(
-                            referenceDate: selectedDate,
-                            isLocked: isSelectedDateCurrentWeek()
-                        )
-                        .padding(.top)
-                        
-                        // 2. DÉTAILS PAR ACTIVITÉ
-                        VStack(alignment: .leading, spacing: 15) {
-                            Text("Détails par activité")
-                                .font(.title3).bold()
-                                .padding(.horizontal)
+                        // 🔒 VÉRIFICATION DE L'HISTORIQUE
+                        if premiumManager.canViewHistory(for: selectedDate) {
                             
-                            // BARRE DE NAVIGATION (Date)
-                            DateNavigationBar(selectedDate: $selectedDate, onDateChange: analyzeWeek, isLocked: false)
+                            // --- CAS 1 : ACCÈS AUTORISÉ ✅ ---
                             
-                            // 3. LES CARTES DE SCORE
-                            if isLoading {
-                                HStack { Spacer(); ProgressView(); Spacer() }.padding(30)
-                            } else {
-                                VStack(spacing: 12) {
-                                    // ✅ GRATUIT : PAS & CALORIES
-                                    SimpleScoreCard(type: .steps, workVal: totalWorkSteps, lifeVal: totalLifeSteps)
-                                        .onTapGesture { selectedMetric = .steps }
-                                    
-                                    SimpleScoreCard(type: .calories, workVal: totalWorkCal, lifeVal: totalLifeCal)
-                                        .onTapGesture { selectedMetric = .calories }
-                                    
-                                    // 🔒 PREMIUM : DISTANCE
-                                    if premiumManager.canViewDetailedMetrics() {
-                                        SimpleScoreCard(type: .distance, workVal: totalWorkDist, lifeVal: totalLifeDist)
-                                            .onTapGesture { selectedMetric = .distance }
-                                    } else {
-                                        LockedMetricCard(title: "Distance", icon: "map.fill", color: .green) { showPremiumAlert = true }
-                                    }
-                                    
-                                    // 🔒 PREMIUM : ÉTAGES
-                                    if premiumManager.canViewDetailedMetrics() {
-                                        SimpleScoreCard(type: .flights, workVal: totalWorkFlights, lifeVal: totalLifeFlights)
-                                            .onTapGesture { selectedMetric = .flights }
-                                    } else {
-                                        LockedMetricCard(title: "Étages", icon: "figure.stairs", color: .cyan) { showPremiumAlert = true }
-                                    }
-                                    
-                                    // 🔒 PREMIUM : CARDIO
-                                    if premiumManager.canViewDetailedMetrics() {
-                                        SimpleCardioCard(workBPM: avgWorkHeart, lifeBPM: avgLifeHeart)
-                                            .onTapGesture { selectedMetric = .heart }
-                                    } else {
-                                        LockedMetricCard(title: "Cardio Moyen", icon: "heart.fill", color: .pink) { showPremiumAlert = true }
-                                    }
-                                }.padding(.horizontal)
+                            // 1. LE RÉCAP HEBDO
+                            WeeklyRecapView(
+                                referenceDate: selectedDate,
+                                isLocked: isSelectedDateCurrentWeek()
+                            )
+                            .padding(.top)
+                            
+                            // 2. DÉTAILS PAR ACTIVITÉ
+                            VStack(alignment: .leading, spacing: 15) {
+                                Text("Détails par activité")
+                                    .font(.title3).bold()
+                                    .padding(.horizontal)
+                                
+                                // BARRE DE NAVIGATION (Date)
+                                DateNavigationBar(selectedDate: $selectedDate, onDateChange: analyzeWeek, isLocked: false)
+                                
+                                // 3. LES CARTES DE SCORE
+                                if isLoading {
+                                    HStack { Spacer(); ProgressView(); Spacer() }.padding(30)
+                                } else {
+                                    VStack(spacing: 12) {
+                                        // ✅ GRATUIT : PAS & CALORIES
+                                        SimpleScoreCard(type: .steps, workVal: totalWorkSteps, lifeVal: totalLifeSteps)
+                                            .onTapGesture { selectedMetric = .steps }
+                                        
+                                        SimpleScoreCard(type: .calories, workVal: totalWorkCal, lifeVal: totalLifeCal)
+                                            .onTapGesture { selectedMetric = .calories }
+                                        
+                                        // 🔒 PREMIUM : DISTANCE
+                                        if premiumManager.canViewDetailedMetrics() {
+                                            SimpleScoreCard(type: .distance, workVal: totalWorkDist, lifeVal: totalLifeDist)
+                                                .onTapGesture { selectedMetric = .distance }
+                                        } else {
+                                            LockedMetricCard(title: "Distance", icon: "map.fill", color: .green) { showPremiumAlert = true }
+                                        }
+                                        
+                                        // 🔒 PREMIUM : ÉTAGES
+                                        if premiumManager.canViewDetailedMetrics() {
+                                            SimpleScoreCard(type: .flights, workVal: totalWorkFlights, lifeVal: totalLifeFlights)
+                                                .onTapGesture { selectedMetric = .flights }
+                                        } else {
+                                            LockedMetricCard(title: "Étages", icon: "figure.stairs", color: .cyan) { showPremiumAlert = true }
+                                        }
+                                        
+                                        // 🔒 PREMIUM : CARDIO
+                                        if premiumManager.canViewDetailedMetrics() {
+                                            SimpleCardioCard(workBPM: avgWorkHeart, lifeBPM: avgLifeHeart)
+                                                .onTapGesture { selectedMetric = .heart }
+                                        } else {
+                                            LockedMetricCard(title: "Cardio Moyen", icon: "heart.fill", color: .pink) { showPremiumAlert = true }
+                                        }
+                                    }.padding(.horizontal)
+                                }
                             }
-                        }
-                        
-                    } else {
-                        
-                        // --- CAS 2 : ACCÈS REFUSÉ (HISTORIQUE ANCIEN) ❌ ---
-                        
-                        VStack(spacing: 20) {
-                            // On garde la navigation pour pouvoir revenir en avant !
-                            DateNavigationBar(selectedDate: $selectedDate, onDateChange: analyzeWeek, isLocked: true)
-                                .padding(.top)
                             
-                            // VISUEL DE VERROUILLAGE
+                        } else {
+                            
+                            // --- CAS 2 : ACCÈS REFUSÉ (HISTORIQUE ANCIEN) ❌ ---
+                            
                             VStack(spacing: 20) {
-                                Image(systemName: "lock.circle.fill")
-                                    .font(.system(size: 60))
-                                    .foregroundStyle(.orange)
-                                    .padding(.top, 40)
+                                // On garde la navigation pour pouvoir revenir en avant !
+                                DateNavigationBar(selectedDate: $selectedDate, onDateChange: analyzeWeek, isLocked: true)
+                                    .padding(.top)
                                 
-                                VStack(spacing: 8) {
-                                    Text("Historique Verrouillé")
-                                        .font(.title2.bold())
-                                    Text("Les données datant de plus de 2 semaines sont réservées aux membres PRO.")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal)
+                                // VISUEL DE VERROUILLAGE
+                                VStack(spacing: 20) {
+                                    Image(systemName: "lock.circle.fill")
+                                        .font(.system(size: 60))
+                                        .foregroundStyle(.orange)
+                                        .padding(.top, 40)
+                                    
+                                    VStack(spacing: 8) {
+                                        Text("Historique Verrouillé")
+                                            .font(.title2.bold())
+                                        Text("Les données datant de plus de 2 semaines sont réservées aux membres PRO.")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal)
+                                    }
+                                    
+                                    Button(action: { showPremiumAlert = true }) {
+                                        Text("Débloquer mon historique")
+                                            .font(.headline)
+                                            .foregroundStyle(.white)
+                                            .padding()
+                                            .frame(maxWidth: .infinity)
+                                            .background(LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing))
+                                            .cornerRadius(12)
+                                            .shadow(color: .orange.opacity(0.4), radius: 8, x: 0, y: 4)
+                                    }
+                                    .padding(.horizontal, 40)
+                                    .padding(.bottom, 40)
                                 }
+                                .frame(maxWidth: .infinity)
+                                .background(Color(UIColor.secondarySystemGroupedBackground))
+                                .cornerRadius(20)
+                                .padding(.horizontal)
+                                .shadow(color: .black.opacity(0.05), radius: 10)
                                 
-                                Button(action: { showPremiumAlert = true }) {
-                                    Text("Débloquer mon historique")
-                                        .font(.headline)
-                                        .foregroundStyle(.white)
-                                        .padding()
-                                        .frame(maxWidth: .infinity)
-                                        .background(LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing))
-                                        .cornerRadius(12)
-                                        .shadow(color: .orange.opacity(0.4), radius: 8, x: 0, y: 4)
-                                }
-                                .padding(.horizontal, 40)
-                                .padding(.bottom, 40)
+                                Spacer()
                             }
-                            .frame(maxWidth: .infinity)
-                            .background(Color(UIColor.secondarySystemGroupedBackground))
-                            .cornerRadius(20)
-                            .padding(.horizontal)
-                            .shadow(color: .black.opacity(0.05), radius: 10)
-                            
-                            Spacer()
                         }
+                        
+                        Text("Données calculées sur les sessions saisies dans le Planning.").font(.caption2).foregroundStyle(.tertiary).padding(.bottom, 30)
                     }
-                    
-                    Text("Données calculées sur les sessions saisies dans le Planning.").font(.caption2).foregroundStyle(.tertiary).padding(.bottom, 30)
                 }
+                // 👇 2. TRANSPARENCE
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
-            .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("Analyse")
             .onAppear { healthManager.requestAuthorization(); analyzeWeek() }
             .sheet(item: $selectedMetric) { metric in DetailMetricView(type: metric, data: getDataFor(metric), language: selectedLanguage) }
@@ -313,7 +320,7 @@ struct DateNavigationBar: View {
                 }
                 .disabled(isSelectedDateCurrentWeek())
             }
-            .padding(.horizontal).padding(.vertical, 8).background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+            .padding(.horizontal).padding(.vertical, 8).background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).glowBorder(cornerRadius: 12)
             
             if !isSelectedDateCurrentWeek() {
                 Button(action: {
@@ -368,7 +375,7 @@ struct LockedMetricCard: View {
                     }.foregroundStyle(.secondary).blur(radius: 6)
                     Circle().fill(Color(UIColor.systemBackground)).frame(width: 44, height: 44).shadow(radius: 4).overlay(Image(systemName: "lock.fill").foregroundStyle(color))
                 }
-            }.padding().background(Color(UIColor.secondarySystemGroupedBackground)).cornerRadius(16).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.1), lineWidth: 1))
+            }.padding().background(Color(UIColor.secondarySystemGroupedBackground)).cornerRadius(16).glowBorder(cornerRadius: 16)
         }.buttonStyle(.plain)
     }
 }
@@ -455,7 +462,7 @@ struct SimpleScoreCard: View {
                 GeometryReader { geo in ZStack(alignment: .leading) { Capsule().fill(Color.gray.opacity(0.2)).frame(height: 6); Capsule().fill(Color.orange).frame(width: geo.size.width * workPercent, height: 6) } }.frame(height: 6).padding(.horizontal, 20); Spacer()
                 VStack(alignment: .trailing, spacing: 2) { Text(format(lifeVal)).font(.system(size: 24, weight: .bold, design: .rounded)).foregroundStyle(.gray); Text("Perso").font(.caption2).bold().foregroundStyle(.gray) }
             }
-        }.padding().background(Color(UIColor.secondarySystemGroupedBackground)).cornerRadius(16).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.1), lineWidth: 1))
+        }.padding().background(Color(UIColor.secondarySystemGroupedBackground)).cornerRadius(16).glowBorder(cornerRadius: 16)
     }
     func format(_ val: Double) -> String { if type == .distance { return String(format: "%.1f km", val) }; return "\(Int(val))" }
     func iconFor(_ type: MetricType) -> String { switch type { case .steps: return "figure.walk"; case .calories: return "flame.fill"; case .distance: return "map.fill"; case .heart: return "heart.fill"; case .flights: return "figure.stairs" } }
@@ -472,7 +479,7 @@ struct SimpleCardioCard: View {
                 Rectangle().fill(Color.gray.opacity(0.2)).frame(width: 1, height: 30)
                 VStack { Text(lifeBPM > 0 ? "\(Int(lifeBPM))" : "--").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(.gray); Text("Perso (BPM)").font(.caption2).bold().foregroundStyle(.gray) }.frame(maxWidth: .infinity)
             }
-        }.padding().background(Color(UIColor.secondarySystemGroupedBackground)).cornerRadius(16).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.1), lineWidth: 1))
+        }.padding().background(Color(UIColor.secondarySystemGroupedBackground)).cornerRadius(16).glowBorder(cornerRadius: 16)
     }
 }
 

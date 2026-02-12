@@ -5,7 +5,7 @@ import HealthKit
 
 struct DashboardView: View {
     @State private var healthManager = HealthManager()
-    @ObservedObject var premiumManager = PremiumManager.shared // ✅ AJOUTÉ : Pour réagir au Premium
+    @ObservedObject var premiumManager = PremiumManager.shared
     
     @Query(sort: \WorkSession.startTime, order: .reverse) private var sessions: [WorkSession]
     @State private var weeklyData: [DailyActivity] = []
@@ -25,32 +25,39 @@ struct DashboardView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 25) {
-                   
-                    headerView          // 1. Profil
-                    statsSummaryView    // 2. Résumé Pas/Heures
-                   
-                    // 3. Graphiques Dynamiques
-                    ForEach(widgets) { widget in
-                        // ✅ SÉCURITÉ : On n'affiche que si visible ET (soit gratuit, soit user est premium)
-                        if widget.isVisible {
-                            if !isPremiumWidget(widget.type) || premiumManager.isPremium {
-                                DynamicChartCard(type: widget.type, data: weeklyData)
+            // 👇 LE CHANGEMENT EST ICI : On force le fond DANS la vue
+            ZStack {
+                // 1. LE FOND
+                GlowBackground()
+                
+                // 2. LE CONTENU PAR-DESSUS
+                ScrollView {
+                    VStack(spacing: 25) {
+                        
+                        headerView          // 1. Profil
+                        statsSummaryView    // 2. Résumé Pas/Heures
+                        
+                        // 3. Graphiques Dynamiques
+                        ForEach(widgets) { widget in
+                            if widget.isVisible {
+                                if !isPremiumWidget(widget.type) || premiumManager.isPremium {
+                                    DynamicChartCard(type: widget.type, data: weeklyData)
+                                }
                             }
                         }
+                        
+                        updateButtonView    // 4. Bouton mise à jour
                     }
-                   
-                    updateButtonView    // 4. Bouton mise à jour
+                    .padding(.top)
+                    .padding(.bottom, 50)
                 }
-                .padding(.top)
-                .padding(.bottom, 50)
+                .scrollContentBackground(.hidden) // Enlève le gris par défaut
             }
             .navigationTitle("Tableau de Bord")
             .toolbar { toolbarContent }
             // --- MODALES ---
             .sheet(isPresented: $showSettings) { SettingsView() }
-            .sheet(isPresented: $showEditDashboard) { DashboardConfigView(widgets: $widgets) } // La vue config mise à jour est en bas
+            .sheet(isPresented: $showEditDashboard) { DashboardConfigView(widgets: $widgets) }
             .sheet(isPresented: $showTrophies) { TrophiesView() }
             .sheet(isPresented: $showShareSheet) {
                 ShareReceiptSheet(
@@ -150,7 +157,7 @@ struct DashboardView: View {
         VStack(alignment: .leading) {
             HStack { Image(systemName: icon).foregroundStyle(color); Text(LocalizedStringKey(title)).font(.caption).foregroundStyle(.secondary) }
             Text(value).font(.system(size: 24, weight: .bold)).foregroundStyle(.primary)
-        }.padding().frame(maxWidth: .infinity, alignment: .leading).background(Color(UIColor.systemGray6)).cornerRadius(16)
+        }.padding().frame(maxWidth: .infinity, alignment: .leading).background(Color(UIColor.systemGray6)).cornerRadius(16).glowBorder(cornerRadius: 16)
     }
     
     func syncStepsForAllSessions() {
@@ -179,31 +186,31 @@ struct DashboardView: View {
         let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "EE"
         let calendar = Calendar.current; let group = DispatchGroup()
         let today = Date()
-       
+        
         for i in 0..<7 {
             guard let date = calendar.date(byAdding: .day, value: -i, to: today) else { continue }
             let isToday = calendar.isDateInToday(date); let dayName = isToday ? (selectedLanguage == "en" ? "Today" : "Auj.") : f.string(from: date)
             let startOfDay = calendar.startOfDay(for: date); guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { continue }
             group.enter()
-           
+            
             var dWSteps: Double=0; var dLSteps: Double=0; var dWCal: Double=0; var dLCal: Double=0; var dWDist: Double=0; var dLDist: Double=0; var dWHeart: Double=0; var dLHeart: Double=0
             var dWFlights: Double=0; var dLFlights: Double=0
-           
+            
             if let session = sessions.first(where: { calendar.isDate($0.startTime, inSameDayAs: date) }) {
                 let sStart = session.startTime; let sEnd = session.endTime ?? Date(); let iG = DispatchGroup()
-               
+                
                 iG.enter(); healthManager.fetchQuantity(type: .stepCount, start: sStart, end: sEnd) { v in dWSteps=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: sStart, end: sEnd) { v in dWCal=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: sStart, end: sEnd) { v in dWDist=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .heartRate, start: sStart, end: sEnd) { v in dWHeart=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: sStart, end: sEnd) { v in dWFlights=v; iG.leave() }
-               
+                
                 iG.enter(); healthManager.fetchQuantity(type: .stepCount, start: startOfDay, end: endOfDay) { v in dLSteps=max(0,v-dWSteps); iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: startOfDay, end: endOfDay) { v in dLCal=max(0,v-dWCal); iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: startOfDay, end: endOfDay) { v in dLDist=max(0,v-dWDist); iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .heartRate, start: startOfDay, end: endOfDay) { v in dLHeart=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: startOfDay, end: endOfDay) { v in dLFlights=max(0,v-dWFlights); iG.leave() }
-               
+                
                 iG.notify(queue: .main) {
                     newDailyData.append(DailyActivity(id: UUID(), dayName: dayName, date: date, workSteps: dWSteps, personalSteps: dLSteps, workCal: dWCal, personalCal: dLCal, workDist: dWDist, personalDist: dLDist, workHeart: dWHeart, personalHeart: dLHeart, workFlights: dWFlights, personalFlights: dLFlights))
                     group.leave()
@@ -215,7 +222,7 @@ struct DashboardView: View {
                 iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: startOfDay, end: endOfDay) { v in dLDist=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .heartRate, start: startOfDay, end: endOfDay) { v in dLHeart=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: startOfDay, end: endOfDay) { v in dLFlights=v; iG.leave() }
-               
+                
                 iG.notify(queue: .main) {
                     newDailyData.append(DailyActivity(id: UUID(), dayName: dayName, date: date, workSteps: 0, personalSteps: dLSteps, workCal: 0, personalCal: dLCal, workDist: 0, personalDist: dLDist, workHeart: 0, personalHeart: dLHeart, workFlights: 0, personalFlights: dLFlights))
                     group.leave()
@@ -265,7 +272,7 @@ struct DynamicChartCard: View {
             }
             .padding(.bottom, 15)
         }
-        .background(Color(UIColor.systemGray6)).cornerRadius(16).padding(.horizontal)
+        .background(Color(UIColor.systemGray6)).cornerRadius(16).glowBorder(cornerRadius: 16).padding(.horizontal)
     }
     
     func valueFor(_ day: DailyActivity, type: MetricType, isWork: Bool) -> Double {
@@ -301,47 +308,53 @@ struct DashboardConfigView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                Section(header: Text("Graphiques affichés"), footer: Text("Maintenez les trois lignes à droite pour changer l'ordre.")) {
-                    ForEach($widgets) { $widget in
-                        HStack {
-                            Image(systemName: iconFor(widget.type))
-                                .foregroundStyle(widget.type.color)
-                                .frame(width: 30)
-                            
-                            Text(widget.type.title)
-                            
-                            Spacer()
-                            
-                            // ✅ LOGIQUE DE VERROUILLAGE
-                            if isPremium(widget.type) && !premiumManager.isPremium {
-                                // MODE CADENAS (User Gratuit + Widget Payant)
-                                HStack(spacing: 8) {
-                                    Text("PRO")
-                                        .font(.caption2.bold())
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Color.orange)
-                                        .foregroundStyle(.black)
-                                        .cornerRadius(4)
-                                    
-                                    Image(systemName: "lock.fill")
-                                        .foregroundStyle(.gray)
+            // 👇 AJOUT ICI : Fond aussi pour la config
+            ZStack {
+                GlowBackground()
+                
+                List {
+                    Section(header: Text("Graphiques affichés"), footer: Text("Maintenez les trois lignes à droite pour changer l'ordre.")) {
+                        ForEach($widgets) { $widget in
+                            HStack {
+                                Image(systemName: iconFor(widget.type))
+                                    .foregroundStyle(widget.type.color)
+                                    .frame(width: 30)
+                                
+                                Text(widget.type.title)
+                                
+                                Spacer()
+                                
+                                // ✅ LOGIQUE DE VERROUILLAGE
+                                if isPremium(widget.type) && !premiumManager.isPremium {
+                                    // MODE CADENAS (User Gratuit + Widget Payant)
+                                    HStack(spacing: 8) {
+                                        Text("PRO")
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.orange)
+                                            .foregroundStyle(.black)
+                                            .cornerRadius(4)
+                                        
+                                        Image(systemName: "lock.fill")
+                                            .foregroundStyle(.gray)
+                                    }
+                                    .contentShape(Rectangle()) // Rend la zone cliquable
+                                    .onTapGesture {
+                                        showSubscriptionView = true
+                                    }
+                                } else {
+                                    // MODE NORMAL (Toggle)
+                                    Toggle("", isOn: $widget.isVisible)
+                                        .labelsHidden()
+                                        .tint(.orange)
                                 }
-                                .contentShape(Rectangle()) // Rend la zone cliquable
-                                .onTapGesture {
-                                    showSubscriptionView = true
-                                }
-                            } else {
-                                // MODE NORMAL (Toggle)
-                                Toggle("", isOn: $widget.isVisible)
-                                    .labelsHidden()
-                                    .tint(.orange)
                             }
                         }
+                        .onMove(perform: move)
                     }
-                    .onMove(perform: move)
                 }
+                .scrollContentBackground(.hidden) // IMPORTANT
             }
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Modifier l'affichage")

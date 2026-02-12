@@ -92,6 +92,7 @@
 				AnalysisView.swift,
 				ContentView.swift,
 				DashboardView.swift,
+				GlowBackground.swift,
 				HealthManager.swift,
 				HealthProfileView.swift,
 				OnboardingView.swift,
@@ -107,6 +108,7 @@
 				TrophyDetailView.swift,
 				TrophyManager.swift,
 				Untitled.swift,
+				ViewModifiers.swift,
 				Work_WalkApp.swift,
 			);
 			target = 85E4A8052F295297001B09B8 /* WorkWalkWidgetExtension */;
