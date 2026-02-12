@@ -5,6 +5,8 @@ import HealthKit
 
 struct DashboardView: View {
     @State private var healthManager = HealthManager()
+    @ObservedObject var premiumManager = PremiumManager.shared // ✅ AJOUTÉ : Pour réagir au Premium
+    
     @Query(sort: \WorkSession.startTime, order: .reverse) private var sessions: [WorkSession]
     @State private var weeklyData: [DailyActivity] = []
     
@@ -25,17 +27,20 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 25) {
-                    
+                   
                     headerView          // 1. Profil
                     statsSummaryView    // 2. Résumé Pas/Heures
-                    
+                   
                     // 3. Graphiques Dynamiques
                     ForEach(widgets) { widget in
+                        // ✅ SÉCURITÉ : On n'affiche que si visible ET (soit gratuit, soit user est premium)
                         if widget.isVisible {
-                            DynamicChartCard(type: widget.type, data: weeklyData)
+                            if !isPremiumWidget(widget.type) || premiumManager.isPremium {
+                                DynamicChartCard(type: widget.type, data: weeklyData)
+                            }
                         }
                     }
-                    
+                   
                     updateButtonView    // 4. Bouton mise à jour
                 }
                 .padding(.top)
@@ -45,7 +50,7 @@ struct DashboardView: View {
             .toolbar { toolbarContent }
             // --- MODALES ---
             .sheet(isPresented: $showSettings) { SettingsView() }
-            .sheet(isPresented: $showEditDashboard) { DashboardConfigView(widgets: $widgets) }
+            .sheet(isPresented: $showEditDashboard) { DashboardConfigView(widgets: $widgets) } // La vue config mise à jour est en bas
             .sheet(isPresented: $showTrophies) { TrophiesView() }
             .sheet(isPresented: $showShareSheet) {
                 ShareReceiptSheet(
@@ -64,6 +69,12 @@ struct DashboardView: View {
             }
             .onChange(of: widgets) { _, _ in saveWidgets() }
         }
+    }
+    
+    // --- HELPERS ---
+    
+    func isPremiumWidget(_ type: MetricType) -> Bool {
+        return type == .distance || type == .heart || type == .flights
     }
     
     // --- SOUS-VUES ---
@@ -94,16 +105,9 @@ struct DashboardView: View {
     var updateButtonView: some View {
         Button(action: {
             let generator = UIImpactFeedbackGenerator(style: .medium); generator.impactOccurred()
-            
-            // Tes fonctions existantes
             calculateWeeklyStats()
             syncStepsForAllSessions()
-            
-            // 👇 LA CORRECTION EST ICI 👇
-            // On supprime le bloc 'WidgetDataManager.save(...)' qui plante.
-            // On le remplace par l'appel unique au chef d'orchestre :
             HealthManager.shared.fetchTodayStepsAndRefreshWidget()
-            
         }) {
             HStack(spacing: 10) {
                 Image(systemName: "arrow.triangle.2.circlepath").font(.title3).fontWeight(.bold)
@@ -170,37 +174,36 @@ struct DashboardView: View {
         return "0h 0m"
     }
     
-    // 👇 FONCTION DE CALCUL (Avec prise en charge des ÉTAGES)
     func calculateWeeklyStats() {
         var newDailyData: [DailyActivity] = []
         let f = DateFormatter(); f.locale = Locale(identifier: selectedLanguage); f.dateFormat = "EE"
         let calendar = Calendar.current; let group = DispatchGroup()
         let today = Date()
-        
+       
         for i in 0..<7 {
             guard let date = calendar.date(byAdding: .day, value: -i, to: today) else { continue }
             let isToday = calendar.isDateInToday(date); let dayName = isToday ? (selectedLanguage == "en" ? "Today" : "Auj.") : f.string(from: date)
             let startOfDay = calendar.startOfDay(for: date); guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { continue }
             group.enter()
-            
+           
             var dWSteps: Double=0; var dLSteps: Double=0; var dWCal: Double=0; var dLCal: Double=0; var dWDist: Double=0; var dLDist: Double=0; var dWHeart: Double=0; var dLHeart: Double=0
-            var dWFlights: Double=0; var dLFlights: Double=0 // 👈 Variables Étages
-            
+            var dWFlights: Double=0; var dLFlights: Double=0
+           
             if let session = sessions.first(where: { calendar.isDate($0.startTime, inSameDayAs: date) }) {
                 let sStart = session.startTime; let sEnd = session.endTime ?? Date(); let iG = DispatchGroup()
-                
+               
                 iG.enter(); healthManager.fetchQuantity(type: .stepCount, start: sStart, end: sEnd) { v in dWSteps=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: sStart, end: sEnd) { v in dWCal=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: sStart, end: sEnd) { v in dWDist=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .heartRate, start: sStart, end: sEnd) { v in dWHeart=v; iG.leave() }
-                iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: sStart, end: sEnd) { v in dWFlights=v; iG.leave() } // 👈 Fetch
-                
+                iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: sStart, end: sEnd) { v in dWFlights=v; iG.leave() }
+               
                 iG.enter(); healthManager.fetchQuantity(type: .stepCount, start: startOfDay, end: endOfDay) { v in dLSteps=max(0,v-dWSteps); iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: startOfDay, end: endOfDay) { v in dLCal=max(0,v-dWCal); iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: startOfDay, end: endOfDay) { v in dLDist=max(0,v-dWDist); iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .heartRate, start: startOfDay, end: endOfDay) { v in dLHeart=v; iG.leave() }
-                iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: startOfDay, end: endOfDay) { v in dLFlights=max(0,v-dWFlights); iG.leave() } // 👈 Fetch
-                
+                iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: startOfDay, end: endOfDay) { v in dLFlights=max(0,v-dWFlights); iG.leave() }
+               
                 iG.notify(queue: .main) {
                     newDailyData.append(DailyActivity(id: UUID(), dayName: dayName, date: date, workSteps: dWSteps, personalSteps: dLSteps, workCal: dWCal, personalCal: dLCal, workDist: dWDist, personalDist: dLDist, workHeart: dWHeart, personalHeart: dLHeart, workFlights: dWFlights, personalFlights: dLFlights))
                     group.leave()
@@ -211,8 +214,8 @@ struct DashboardView: View {
                 iG.enter(); healthManager.fetchQuantity(type: .activeEnergyBurned, start: startOfDay, end: endOfDay) { v in dLCal=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .distanceWalkingRunning, start: startOfDay, end: endOfDay) { v in dLDist=v; iG.leave() }
                 iG.enter(); healthManager.fetchQuantity(type: .heartRate, start: startOfDay, end: endOfDay) { v in dLHeart=v; iG.leave() }
-                iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: startOfDay, end: endOfDay) { v in dLFlights=v; iG.leave() } // 👈 Fetch
-                
+                iG.enter(); healthManager.fetchQuantity(type: .flightsClimbed, start: startOfDay, end: endOfDay) { v in dLFlights=v; iG.leave() }
+               
                 iG.notify(queue: .main) {
                     newDailyData.append(DailyActivity(id: UUID(), dayName: dayName, date: date, workSteps: 0, personalSteps: dLSteps, workCal: 0, personalCal: dLCal, workDist: 0, personalDist: dLDist, workHeart: 0, personalHeart: dLHeart, workFlights: 0, personalFlights: dLFlights))
                     group.leave()
@@ -225,7 +228,6 @@ struct DashboardView: View {
 
 // MARK: - COMPOSANTS INTERNES DU DASHBOARD
 
-// Graphique Dynamique (CORRIGÉ : Switch Exhaustif avec .flights)
 struct DynamicChartCard: View {
     let type: MetricType
     let data: [DailyActivity]
@@ -266,25 +268,23 @@ struct DynamicChartCard: View {
         .background(Color(UIColor.systemGray6)).cornerRadius(16).padding(.horizontal)
     }
     
-    // 👇 LE SWITCH CORRIGÉ (Avec .flights)
     func valueFor(_ day: DailyActivity, type: MetricType, isWork: Bool) -> Double {
         switch type {
         case .steps: return isWork ? day.workSteps : day.personalSteps
         case .calories: return isWork ? day.workCal : day.personalCal
         case .distance: return isWork ? day.workDist : day.personalDist
         case .heart: return isWork ? day.workHeart : day.personalHeart
-        case .flights: return isWork ? day.workFlights : day.personalFlights // ✅ Ajouté
+        case .flights: return isWork ? day.workFlights : day.personalFlights
         }
     }
     
-    // 👇 L'ICÔNE CORRIGÉE (Avec .flights)
     func iconFor(_ type: MetricType) -> String {
         switch type {
         case .steps: return "figure.walk"
         case .calories: return "flame.fill"
         case .distance: return "map.fill"
         case .heart: return "heart.fill"
-        case .flights: return "figure.stairs" // ✅ Ajouté
+        case .flights: return "figure.stairs"
         }
     }
 }
@@ -295,37 +295,89 @@ struct DashboardConfigView: View {
     @Binding var widgets: [DashboardWidget]
     @Environment(\.dismiss) var dismiss
     
+    // ✅ AJOUT : Connexion au Premium
+    @ObservedObject var premiumManager = PremiumManager.shared
+    @State private var showSubscriptionView = false
+    
     var body: some View {
         NavigationStack {
             List {
                 Section(header: Text("Graphiques affichés"), footer: Text("Maintenez les trois lignes à droite pour changer l'ordre.")) {
                     ForEach($widgets) { $widget in
                         HStack {
-                            Image(systemName: iconFor(widget.type)).foregroundStyle(widget.type.color).frame(width: 30)
+                            Image(systemName: iconFor(widget.type))
+                                .foregroundStyle(widget.type.color)
+                                .frame(width: 30)
+                            
                             Text(widget.type.title)
+                            
                             Spacer()
-                            Toggle("", isOn: $widget.isVisible).labelsHidden()
+                            
+                            // ✅ LOGIQUE DE VERROUILLAGE
+                            if isPremium(widget.type) && !premiumManager.isPremium {
+                                // MODE CADENAS (User Gratuit + Widget Payant)
+                                HStack(spacing: 8) {
+                                    Text("PRO")
+                                        .font(.caption2.bold())
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Color.orange)
+                                        .foregroundStyle(.black)
+                                        .cornerRadius(4)
+                                    
+                                    Image(systemName: "lock.fill")
+                                        .foregroundStyle(.gray)
+                                }
+                                .contentShape(Rectangle()) // Rend la zone cliquable
+                                .onTapGesture {
+                                    showSubscriptionView = true
+                                }
+                            } else {
+                                // MODE NORMAL (Toggle)
+                                Toggle("", isOn: $widget.isVisible)
+                                    .labelsHidden()
+                                    .tint(.orange)
+                            }
                         }
-                    }.onMove(perform: move)
+                    }
+                    .onMove(perform: move)
                 }
             }
             .environment(\.editMode, .constant(.active))
             .navigationTitle("Modifier l'affichage")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("OK") { dismiss() } }
+            // Ouvre l'abonnement si on clique sur un cadenas
+            .sheet(isPresented: $showSubscriptionView) {
+                SubscriptionView()
+            }
+            // Sécurité : désactive les widgets premium si l'user est gratuit
+            .onAppear {
+                if !premiumManager.isPremium {
+                    for index in widgets.indices {
+                        if isPremium(widgets[index].type) {
+                            widgets[index].isVisible = false
+                        }
+                    }
+                }
+            }
         }
     }
     
     func move(from source: IndexSet, to destination: Int) { widgets.move(fromOffsets: source, toOffset: destination) }
     
-    // 👇 Switch exhaustif aussi ici !
+    // Définition des widgets payants
+    func isPremium(_ type: MetricType) -> Bool {
+        return type == .distance || type == .heart || type == .flights
+    }
+    
     func iconFor(_ type: MetricType) -> String {
         switch type {
         case .steps: return "figure.walk"
         case .calories: return "flame.fill"
         case .distance: return "map.fill"
         case .heart: return "heart.fill"
-        case .flights: return "figure.stairs" // ✅ Ajouté
+        case .flights: return "figure.stairs"
         }
     }
 }
