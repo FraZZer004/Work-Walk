@@ -320,12 +320,6 @@
         }
       }
     },
-    "Activer Notifications" : {
-
-    },
-    "Activer Santé (Podomètre)" : {
-
-    },
     "Activité" : {
       "localizations" : {
         "en" : {
@@ -645,9 +639,6 @@
           }
         }
       }
-    },
-    "Ces infos permettent de calculer précisément vos calories brûlées." : {
-
     },
     "Cette action est irréversible." : {
       "localizations" : {
@@ -1306,9 +1297,6 @@
         }
       }
     },
-    "Marchez, travaillez, et suivez votre progression." : {
-
-    },
     "Membre PRO 👑" : {
 
     },
@@ -1683,7 +1671,7 @@
         }
       }
     },
-    "Pour fonctionner, l'application a besoin d'accéder à vos données de marche et de vous envoyer des rappels." : {
+    "Pour fonctionner, l'application a besoin d'accéder à vos données de marche." : {
 
     },
     "Pour gérer l'accès Santé, allez dans Réglages > Apps > Santé > Accès aux données et appareils > Work&Walk." : {
@@ -1854,6 +1842,9 @@
           }
         }
       }
+    },
+    "Retour" : {
+
     },
     "Revenir à la semaine en cours" : {
       "localizations" : {
