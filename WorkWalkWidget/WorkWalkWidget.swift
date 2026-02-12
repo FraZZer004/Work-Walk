@@ -1,148 +1,141 @@
 import WidgetKit
 import SwiftUI
 
-// 1. LE PROVIDER (Gère les données et les mises à jour)
+// 1. LE PROVIDER (Gère les données)
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        // Données bidons pour l'aperçu
         SimpleEntry(date: Date(), steps: 5000, hours: "4h 00m", calories: 250)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        // Aperçu galerie
         let entry = SimpleEntry(date: Date(), steps: 8500, hours: "6h 30m", calories: 450)
         completion(entry)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
-        // 1. C'est CETTE ligne qui va chercher les infos dans le tuyau
+    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
         let data = WidgetDataManager.load()
-        
-        // 2. On crée l'entrée avec les données récupérées
         let entry = SimpleEntry(
             date: Date(),
-            steps: data.steps,      // <--- Vérifie que tu passes bien data.steps ici
-            hours: data.hours,      // <--- et data.hours ici
-            calories: data.calories // <--- et data.calories ici
+            steps: data.steps,
+            hours: data.hours,
+            calories: data.calories
         )
-
-        // 3. On dit au widget de se rafraîchir plus tard
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
     }
 }
 
-// 2. LA STRUCTURE DE DONNÉES (C'est ici qu'il manquait 'steps' !)
+// 2. LA STRUCTURE DE DONNÉES
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let steps: Double    // <--- C'est ça qui manquait
+    let steps: Double
     let hours: String
     let calories: Double
 }
 
-// 3. LA VUE (Le Design Vibrant corrigé pour iOS 17)
+// 3. LE FOND GLOW SPÉCIFIQUE AU WIDGET
+struct WidgetGlowBackground: View {
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        ZStack {
+            (colorScheme == .dark ? Color.black : Color.white)
+            
+            Circle()
+                .fill(Color.orange.opacity(colorScheme == .dark ? 0.4 : 0.3))
+                .blur(radius: 30)
+                .offset(x: -20, y: -20)
+            
+            Circle()
+                .fill(Color.red.opacity(colorScheme == .dark ? 0.2 : 0.15))
+                .blur(radius: 25)
+                .offset(x: 20, y: 20)
+        }
+        .ignoresSafeArea()
+    }
+}
+
+// 4. LA VUE (Mise en page originale + Style Glow + Décalage Gauche)
 struct WorkWalkWidgetEntryView : View {
     var entry: Provider.Entry
     @Environment(\.widgetFamily) var family
-    
-    // Ta couleur orange
-    let accentColor = Color.orange
-    
+
     var body: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 0) {
             
-            // 1. EN-TÊTE (Sans l'image, texte en Orange)
-            HStack(spacing: 6) {
+            // HEADER
+            HStack {
                 Text("WORK & WALK")
-                    .font(.caption2)
-                    .fontWeight(.black) // J'ai mis "black" pour que ce soit bien lisible
-                    .foregroundStyle(.orange) // 👈 C'est ici que la magie opère !
-                    .tracking(1) // Espacement léger des lettres pour le style
-                
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundStyle(.orange)
+                    .tracking(1.2)
                 Spacer()
             }
-            .padding(.bottom, 2)
             
             Spacer()
             
             if family == .systemSmall {
                 // --- PETIT WIDGET ---
-                Text("\(Int(entry.steps))")
-                    .font(.system(size: 34, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.primary)
-                    .contentTransition(.numericText())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                
-                Text("pas aujourd'hui")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.bottom, 8)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(Int(entry.steps))")
+                        .font(.system(size: 34, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.primary)
+                    
+                    Text("pas aujourd'hui")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 12)
                 
                 HStack(spacing: 6) {
                     Image(systemName: "briefcase.fill").font(.caption2)
                     Text(entry.hours).font(.caption).fontWeight(.semibold)
                 }
                 .padding(.vertical, 5).padding(.horizontal, 10)
-                .background(accentColor.opacity(0.15))
-                .foregroundStyle(accentColor)
+                .background(Color.orange.opacity(0.15))
+                .foregroundStyle(.orange)
                 .clipShape(Capsule())
                 
             } else {
                 // --- MOYEN WIDGET ---
-                HStack(alignment: .center, spacing: 30) {
+                HStack(alignment: .center, spacing: 15) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Activité").font(.caption).fontWeight(.bold).foregroundStyle(.secondary).textCase(.uppercase)
                         Text("\(Int(entry.steps))")
-                            .font(.system(size: 42, weight: .heavy, design: .rounded))
+                            .font(.system(size: 40, weight: .heavy, design: .rounded))
                             .foregroundStyle(.primary)
-                            .contentTransition(.numericText())
-                        Text("pas").font(.subheadline).foregroundStyle(accentColor).fontWeight(.medium)
+                        Text("pas").font(.subheadline).foregroundStyle(.orange).fontWeight(.medium)
                     }
-                    Rectangle().fill(Color.secondary.opacity(0.2)).frame(width: 1).padding(.vertical, 5)
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 10) {
-                            Circle().fill(Color.blue.opacity(0.15)).frame(width: 32, height: 32)
-                                .overlay(Image(systemName: "briefcase.fill").foregroundStyle(.blue).font(.caption))
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "briefcase.fill").foregroundStyle(.blue).font(.caption)
                             VStack(alignment: .leading, spacing: 0) {
-                                Text("Travail").font(.caption2).foregroundStyle(.secondary)
+                                Text("Travail").font(.system(size: 9)).foregroundStyle(.secondary)
                                 Text(entry.hours).font(.subheadline).fontWeight(.bold)
                             }
                         }
-                        HStack(spacing: 10) {
-                            Circle().fill(Color.red.opacity(0.15)).frame(width: 32, height: 32)
-                                .overlay(Image(systemName: "flame.fill").foregroundStyle(.red).font(.caption))
+                        HStack(spacing: 8) {
+                            Image(systemName: "flame.fill").foregroundStyle(.red).font(.caption)
                             VStack(alignment: .leading, spacing: 0) {
-                                Text("Énergie").font(.caption2).foregroundStyle(.secondary)
+                                Text("Énergie").font(.system(size: 9)).foregroundStyle(.secondary)
                                 Text("\(Int(entry.calories)) kcal").font(.subheadline).fontWeight(.bold)
                             }
                         }
                     }
                 }
             }
-            Spacer()
         }
-        .fontDesign(.rounded)
-        .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
-    }
-}
-
-// 4. SOUS-VUE POUR LE STYLE
-struct StatBlockVibrant: View {
-    let icon: String; let title: String; let value: String
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.headline)
-                .frame(width: 24, height: 24)
-                .background(.white.opacity(0.2)).clipShape(Circle())
-            VStack(alignment: .leading, spacing: 0) {
-                Text(title).font(.caption2).foregroundStyle(.white.opacity(0.7))
-                Text(value).font(.callout).fontWeight(.bold)
-            }
+        // 👇 AJUSTEMENT DU DÉCALAGE GAUCHE ICI
+        .padding(.leading, 4)   // On réduit la marge de gauche (6 au lieu de 12)
+        .padding(.trailing, 12) // Marge standard à droite
+        .padding(.vertical, 12) // Marge standard haut/bas
+        .containerBackground(for: .widget) {
+            WidgetGlowBackground()
         }
-        .foregroundStyle(.white)
     }
 }
 

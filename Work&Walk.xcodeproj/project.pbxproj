@@ -10,7 +10,6 @@
 		85E4A8092F295298001B09B8 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 85E4A8082F295297001B09B8 /* WidgetKit.framework */; };
 		85E4A80B2F295298001B09B8 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 85E4A80A2F295298001B09B8 /* SwiftUI.framework */; };
 		85E4A81A2F295298001B09B8 /* WorkWalkWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 85E4A8062F295297001B09B8 /* WorkWalkWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		85FE7ADC2F2B71C500DEC4BF /* WorkWalkWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 85FE7AD22F2B71C300DEC4BF /* WorkWalkWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -20,13 +19,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 85E4A8052F295297001B09B8;
 			remoteInfo = WorkWalkWidgetExtension;
-		};
-		85FE7ADA2F2B71C500DEC4BF /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 854F1BC92F1C059000C69DDC /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 85FE7AD12F2B71C300DEC4BF;
-			remoteInfo = "WorkWalkWatch Watch App";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -48,7 +40,6 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
-				85FE7ADC2F2B71C500DEC4BF /* WorkWalkWatch Watch App.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -61,17 +52,9 @@
 		85E4A8082F295297001B09B8 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		85E4A80A2F295298001B09B8 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		85E4A8202F2953CC001B09B8 /* WorkWalkWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WorkWalkWidgetExtension.entitlements; sourceTree = "<group>"; };
-		85FE7AD22F2B71C300DEC4BF /* WorkWalkWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WorkWalkWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		851DA9352F32834500C241F4 /* Exceptions for "Work&Walk" folder in "Work&Walk" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Untitled.swift,
-			);
-			target = 854F1BD02F1C059000C69DDC /* Work&Walk */;
-		};
 		85E4A81E2F295298001B09B8 /* Exceptions for "WorkWalkWidget" folder in "WorkWalkWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -107,19 +90,9 @@
 				TrophiesView.swift,
 				TrophyDetailView.swift,
 				TrophyManager.swift,
-				Untitled.swift,
-				ViewModifiers.swift,
 				Work_WalkApp.swift,
 			);
 			target = 85E4A8052F295297001B09B8 /* WorkWalkWidgetExtension */;
-		};
-		85FE7AE22F2B721500DEC4BF /* Exceptions for "Work&Walk" folder in "WorkWalkWatch Watch App" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				HealthManager.swift,
-				SharedModels.swift,
-			);
-			target = 85FE7AD12F2B71C300DEC4BF /* WorkWalkWatch Watch App */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -127,9 +100,7 @@
 		854F1BD32F1C059000C69DDC /* Work&Walk */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				851DA9352F32834500C241F4 /* Exceptions for "Work&Walk" folder in "Work&Walk" target */,
 				85E4A8412F2A0752001B09B8 /* Exceptions for "Work&Walk" folder in "WorkWalkWidgetExtension" target */,
-				85FE7AE22F2B721500DEC4BF /* Exceptions for "Work&Walk" folder in "WorkWalkWatch Watch App" target */,
 			);
 			path = "Work&Walk";
 			sourceTree = "<group>";
@@ -141,11 +112,6 @@
 				85E4A81E2F295298001B09B8 /* Exceptions for "WorkWalkWidget" folder in "WorkWalkWidgetExtension" target */,
 			);
 			path = WorkWalkWidget;
-			sourceTree = "<group>";
-		};
-		85FE7AD32F2B71C300DEC4BF /* WorkWalkWatch Watch App */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "WorkWalkWatch Watch App";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -167,13 +133,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		85FE7ACF2F2B71C300DEC4BF /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -183,7 +142,6 @@
 				85E4A8202F2953CC001B09B8 /* WorkWalkWidgetExtension.entitlements */,
 				854F1BD32F1C059000C69DDC /* Work&Walk */,
 				85E4A80C2F295298001B09B8 /* WorkWalkWidget */,
-				85FE7AD32F2B71C300DEC4BF /* WorkWalkWatch Watch App */,
 				85E4A8072F295297001B09B8 /* Frameworks */,
 				854F1BD22F1C059000C69DDC /* Products */,
 			);
@@ -194,7 +152,6 @@
 			children = (
 				854F1BD12F1C059000C69DDC /* Work&Walk.app */,
 				85E4A8062F295297001B09B8 /* WorkWalkWidgetExtension.appex */,
-				85FE7AD22F2B71C300DEC4BF /* WorkWalkWatch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -225,7 +182,6 @@
 			);
 			dependencies = (
 				85E4A8192F295298001B09B8 /* PBXTargetDependency */,
-				85FE7ADB2F2B71C500DEC4BF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				854F1BD32F1C059000C69DDC /* Work&Walk */,
@@ -260,28 +216,6 @@
 			productReference = 85E4A8062F295297001B09B8 /* WorkWalkWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		85FE7AD12F2B71C300DEC4BF /* WorkWalkWatch Watch App */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 85FE7ADD2F2B71C500DEC4BF /* Build configuration list for PBXNativeTarget "WorkWalkWatch Watch App" */;
-			buildPhases = (
-				85FE7ACE2F2B71C300DEC4BF /* Sources */,
-				85FE7ACF2F2B71C300DEC4BF /* Frameworks */,
-				85FE7AD02F2B71C300DEC4BF /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				85FE7AD32F2B71C300DEC4BF /* WorkWalkWatch Watch App */,
-			);
-			name = "WorkWalkWatch Watch App";
-			packageProductDependencies = (
-			);
-			productName = "WorkWalkWatch Watch App";
-			productReference = 85FE7AD22F2B71C300DEC4BF /* WorkWalkWatch Watch App.app */;
-			productType = "com.apple.product-type.application";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -296,9 +230,6 @@
 						CreatedOnToolsVersion = 26.2;
 					};
 					85E4A8052F295297001B09B8 = {
-						CreatedOnToolsVersion = 26.2;
-					};
-					85FE7AD12F2B71C300DEC4BF = {
 						CreatedOnToolsVersion = 26.2;
 					};
 				};
@@ -320,7 +251,6 @@
 			targets = (
 				854F1BD02F1C059000C69DDC /* Work&Walk */,
 				85E4A8052F295297001B09B8 /* WorkWalkWidgetExtension */,
-				85FE7AD12F2B71C300DEC4BF /* WorkWalkWatch Watch App */,
 			);
 		};
 /* End PBXProject section */
@@ -334,13 +264,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		85E4A8042F295297001B09B8 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		85FE7AD02F2B71C300DEC4BF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -364,13 +287,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		85FE7ACE2F2B71C300DEC4BF /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -378,11 +294,6 @@
 			isa = PBXTargetDependency;
 			target = 85E4A8052F295297001B09B8 /* WorkWalkWidgetExtension */;
 			targetProxy = 85E4A8182F295298001B09B8 /* PBXContainerItemProxy */;
-		};
-		85FE7ADB2F2B71C500DEC4BF /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 85FE7AD12F2B71C300DEC4BF /* WorkWalkWatch Watch App */;
-			targetProxy = 85FE7ADA2F2B71C500DEC4BF /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -517,7 +428,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Work&Walk/Work&Walk.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 3UA2286B3F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -553,7 +464,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Work&Walk/Work&Walk.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 3UA2286B3F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -589,7 +500,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WorkWalkWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 3UA2286B3F;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkWalkWidget/Info.plist;
@@ -620,7 +531,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WorkWalkWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 3UA2286B3F;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkWalkWidget/Info.plist;
@@ -641,78 +552,6 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		85FE7ADE2F2B71C500DEC4BF /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3UA2286B3F;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "WorkWalkWatch-Watch-App-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = WorkWalkWatch;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Pour compter vos pas pendant le travail.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Pour sauvegarder vos sessions.";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "alan.Work-Walk";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "alan.Work-Walk.watchkitapp";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.0;
-			};
-			name = Debug;
-		};
-		85FE7ADF2F2B71C500DEC4BF /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3UA2286B3F;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "WorkWalkWatch-Watch-App-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = WorkWalkWatch;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Pour compter vos pas pendant le travail.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Pour sauvegarder vos sessions.";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "alan.Work-Walk";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "alan.Work-Walk.watchkitapp";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
-				SKIP_INSTALL = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -742,15 +581,6 @@
 			buildConfigurations = (
 				85E4A81C2F295298001B09B8 /* Debug */,
 				85E4A81D2F295298001B09B8 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		85FE7ADD2F2B71C500DEC4BF /* Build configuration list for PBXNativeTarget "WorkWalkWatch Watch App" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				85FE7ADE2F2B71C500DEC4BF /* Debug */,
-				85FE7ADF2F2B71C500DEC4BF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
